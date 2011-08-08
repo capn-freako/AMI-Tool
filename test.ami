@@ -1,0 +1,7 @@
+(testAMI
+    (Description "a simple AMI file, for testing")
+    (Reserved_Parameters
+        (Ignore_Bits (Usage Info) (Type Integer) (Default 21))
+    ) | test comment
+)
+

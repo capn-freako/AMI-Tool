@@ -1,0 +1,56 @@
+(Arria_V_Rx
+   (Description "Arria V high speed serial interface receiver model")
+
+   (Reserved_Parameters
+      (Ignore_Bits (Usage Info) (Type Integer) (Default 500000)
+         (Description "DFE may take a half million bits to converge."))
+      (Max_Init_Aggressors (Usage Info) (Type Integer) (Default 25)
+         (Description "Number of aggressors is actually unlimited."))
+      (Init_Returns_Impulse (Usage Info) (Type Boolean) (Default True)
+         (Description "Both impulse and parameters_out returned."))
+      (GetWave_Exists (Usage Info) (Type Boolean) (Default True)
+         (Description "GetWave is well and truly provided in the module."))
+      (Use_Init_Output (Usage Info) (Type Boolean) (Default False)
+         (Description "GetWave and Init function indpendent of each other."))
+      (Rx_Receiver_Sensitivity (Usage Info)(Format Value 0.0625)(Type Float)(Default 0.0625)
+         (Description "Nominal receiver sensitivity"))
+   ) | End Reserved_Parameters
+
+   (Model_Specific
+      (Mode (Usage InOut)(List 0 1 2)
+         (Type Integer)(Default 0)
+         (Label "Bypass" "Medium" "Maximum")
+         (Description "Input equalization selection")
+      )
+      (Dcgain (Usage InOut)(List 0 3)(Type Integer)(Default 0)
+         (Description "Input amplifier DC gain, in dB"))
+      (Vcm (Usage In)(List 0.8 -1)(Type Float)(Default 0.8)
+         (Description "Rx termination voltage. -1 is tri-state."))
+      (Rterm (Usage In)(List 150 120 100 85 -1)(Type Integer)(Default 100)
+         (Description "Rx termination resistance. -1 is open drain."))
+      (Bandwidth (Usage In)(List 0 1)(Type Integer)(Default 0)
+         (Label "High" "Low")
+         (Description "Rx Bandwidth"))
+      (cdr
+         (ltd_ltr (Usage In)(List "auto" "data" "ref")(Type String)(Default "auto")
+          (Description "CDR lock mode: Lock 2 data, lock 2 reference, lock to reference followed by data (auto)"))
+         (pll_bw (Usage In)(List 0 1 2)(Type Integer)(Default 1)
+            (Description "PLL Bandwidth selection: 0: Low; 1: Med ; 2: High")
+         )
+         (mcount (Usage In)(List 1 2 3 4 8 10 16 20 25 12)(Type Integer)(Default 10)
+            (Description "Reference loop feedback counter"))
+         (ncount (Usage In)(List 1 2 4 8)(Type Integer)(Default 1)
+            (Description "Reference input counter"))
+         (lcount_pfd (Usage In)(List 1 2 4 8)(Type Integer)(Default 1)
+            (Description "Reference loop output counter"))
+         (lcount_pd (Usage In)(List 1 2 4 8)(Type Integer)(Default 1)
+            (Description "Data lock loop output counter"))
+         (clk_freq (Usage InOut)(Range 6.25e9 4e9 8.5e9)(Type Float)(Default 6.25e9)
+            (Description "CDR loop internal frequency"))
+         (ref_freq (Usage In)(Range 0 0 8.5e9)(Type Float)(Default 0)
+            (Description "CDR loop reference clock frequency. 0(default) is automatic frequency selection."))
+      ) | End cdr
+      (Process (Usage In)(Corner 0 -1 1)(Type Integer)
+         (Description "Process corner for analog front end."))
+   ) | End Model_Specific
+) | End Arria_V_Rx
