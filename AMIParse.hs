@@ -1,7 +1,14 @@
 module AMIParse where
 
 import Text.ParserCombinators.Parsec
-import AMITypes
+
+type AmiTree  = (String, [AmiToken])
+
+type AmiToken = (String, AmiExp)
+
+data AmiExp   = Val String
+              | Tokens [AmiToken]
+    deriving (Show)
 
 identifier :: Parser String
 identifier = many1 (alphaNum <|> char '_')
@@ -22,82 +29,46 @@ real = do
 eol :: Parser Char
 eol = char '\n'
 
-symbol :: Parser a -> Parser a
-symbol p = do
+skipJunk :: Parser ()
+skipJunk = do
     skipMany space
     skipMany (do char '|'
                  manyTill anyChar eol
                  skipMany space)
-    res <- p
-    skipMany space
-    skipMany (do char '|'
-                 manyTill anyChar eol
-                 skipMany space)
-    return res
+    return ()
 
 amiTree :: Parser AmiTree
 amiTree = do
-    symbol (char '(')             <?> "openning parenthesis"
-    rootName <- symbol identifier <?> "root name"
-    tokens   <- many1 amiToken    <?> "token list"
-    symbol (char ')')             <?> "closing parenthesis"
+    skipJunk
+    char '('
+    skipJunk
+    rootName <- identifier     <?> "root name"
+    skipJunk
+    tokens   <- many1 amiToken <?> "token list"
+    skipJunk
+    char ')'
+    skipJunk
     return (rootName, tokens)
 
 amiToken :: Parser AmiToken
-amiToken = do
-    symbol (char '(')             <?> "openning parenthesis"
-    lbl <- symbol identifier      <?> "label"
-    do tokens <- try (many1 amiToken)
-       symbol (char ')')          <?> "closing parenthesis"
-       return (lbl, TokenList tokens)
-       <|> do val <- symbol (amiVal lbl)
-              symbol (char ')')   <?> "closing parenthesis"
-              return (lbl, Attribute val)
-       <?> ("token list, or value (Label: " ++ lbl ++ ")")
+amiToken = do char '('
+              skipJunk
+              lbl <- identifier <?> "label"
+              skipJunk
+              do tokens <- many1 amiToken
+                 skipJunk
+                 char ')'
+                 skipJunk
+                 return (lbl, Tokens tokens)
+               <|> do val <- (quotedVal <|> many (satisfy (/= ')')))
+                      char ')'
+                      skipJunk
+                      return (lbl, Val val)
 
-amiVal :: String -> Parser AmiAttribute
-amiVal attType = case attType of
-    "Description" -> do
-        char '"'
-        desc <- many (satisfy (/= '"'))
-        char '"'
-        return (Description desc)
-
-    "Usage" -> do
-        use <- identifier
-        case use of
-            "Info"  -> return (Usage Info)
-            "In"    -> return (Usage In)
-            "Out"   -> return (Usage Out)
-            "Inout" -> return (Usage Inout)
-            _       -> return (Usage (UsrUsage use))
-
-    "Type" -> do
-        pType <- identifier
-        case pType of
-            "Bool" -> return (Type PBool)
-            "Int"  -> return (Type PInt)
-            "Tap"  -> return (Type PTap)
-            "UI"   -> return (Type PUI)
-            _      -> return (Type PUsr)
-
-    "Default" -> do
-        val <- real
-        return (Default (AmiDefVal val))
-        
-    "Format" -> do
-        frmtType <- identifier
-        case frmtType of
-            "Range" -> do
-                val1 <- real
-                val2 <- real
-                val3 <- real
-                return (Format (Range val1 val2 val3))
-
-            _       -> do
-                return (Format (UsrFrmt frmtType))
-
-    _ -> do
-        str <- identifier <?> "user defined attribute label"
-        return (UsrAtt attType str)
+quotedVal :: Parser String
+quotedVal = do
+    char '"'
+    res <- many (satisfy (/= '"'))
+    char '"'
+    return res
 
