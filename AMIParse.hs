@@ -6,7 +6,7 @@ type AmiTree  = (String, [AmiToken])
 
 type AmiToken = (String, AmiExp)
 
-data AmiExp   = Val String
+data AmiExp   = Vals [String]
               | Tokens [AmiToken]
     deriving (Show)
 
@@ -28,6 +28,9 @@ real = do
 
 eol :: Parser Char
 eol = char '\n'
+
+whitespace :: Parser String
+whitespace = many1 space
 
 skipJunk :: Parser ()
 skipJunk = do
@@ -60,10 +63,10 @@ amiToken = do char '('
                  char ')'
                  skipJunk
                  return (lbl, Tokens tokens)
-               <|> do val <- (quotedVal <|> many (satisfy (/= ')')))
+               <|> do vals <- sepBy (quotedVal <|> many (noneOf " )")) (char ' ')
                       char ')'
                       skipJunk
-                      return (lbl, Val val)
+                      return (lbl, Vals vals)
 
 quotedVal :: Parser String
 quotedVal = do
