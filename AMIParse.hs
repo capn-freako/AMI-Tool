@@ -30,20 +30,20 @@ skipJunk = do
                  skipMany space)
     return ()
 
+symbol :: Parser a -> Parser a
+symbol p = do res <- p
+              skipJunk
+              return res
+
 amiToken :: Parser AmiToken
 amiToken = do skipJunk
-              char '('
-              skipJunk
-              lbl <- identifier <?> "label"
-              skipJunk
-              do tokens <- try (many1 amiToken)
-                 skipJunk
-                 char ')'
-                 skipJunk
+              symbol (char '(')
+              lbl <- symbol (identifier <?> "label")
+              do tokens <- try (symbol (many1 amiToken))
+                 symbol (char ')')
                  return (lbl, Tokens tokens)
                <|> do vals <- sepBy (quotedVal <|> many (noneOf " )")) (char ' ')
-                      char ')'
-                      skipJunk
+                      symbol (char ')')
                       return (lbl, Vals vals)
 
 quotedVal :: Parser String
