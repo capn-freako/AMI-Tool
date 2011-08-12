@@ -2,11 +2,11 @@ CFLAGS += -I/home/dbanas/ghc-6.12.3/includes/
 
 dummy: all
 
-all: AMIParseTest
+all: ami_test
 
-AMIParseTest: AMIParse_stub.o AMIParseTest.o AMIParse.o
+ami_test: AMIModel_stub.o AMIModel.o ami_model.o ami_test.o
 	ghc -no-hs-main -o $@ $^
 
-AMIParse.o, AMIParse_stub.o: AMIParse.hs
+AMIModel.o, AMIModel_stub.o: AMIModel.hs
 	ghc --make $^
 
