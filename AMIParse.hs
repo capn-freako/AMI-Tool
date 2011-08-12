@@ -8,6 +8,19 @@ data AmiExp   = Vals [String]
               | Tokens [AmiToken]
     deriving (Show)
 
+-- This is the AMI specific parser.
+amiToken :: Parser AmiToken
+amiToken = do skipJunk
+              symbol (char '(')
+              lbl <- symbol (identifier <?> "label")
+              do tokens <- try (symbol (many1 amiToken))
+                 symbol (char ')')
+                 return (lbl, Tokens tokens)
+               <|> do vals <- sepBy (quotedVal <|> many (noneOf " )")) (char ' ')
+                      symbol (char ')')
+                      return (lbl, Vals vals)
+
+-- These are helper functions.
 identifier :: Parser String
 identifier = many1 (alphaNum <|> char '_')
 
@@ -34,17 +47,6 @@ symbol :: Parser a -> Parser a
 symbol p = do res <- p
               skipJunk
               return res
-
-amiToken :: Parser AmiToken
-amiToken = do skipJunk
-              symbol (char '(')
-              lbl <- symbol (identifier <?> "label")
-              do tokens <- try (symbol (many1 amiToken))
-                 symbol (char ')')
-                 return (lbl, Tokens tokens)
-               <|> do vals <- sepBy (quotedVal <|> many (noneOf " )")) (char ' ')
-                      symbol (char ')')
-                      return (lbl, Vals vals)
 
 quotedVal :: Parser String
 quotedVal = do
