@@ -13,12 +13,17 @@ import Text.ParserCombinators.Parsec
 import AMIParse
 
 foreign export ccall amiInit :: Ptr CDouble -> CInt -> CInt -> CDouble -> CDouble ->
-           CString -> Ptr CString -> Ptr (Ptr ()) -> Ptr CString -> IO Int
+           CString -> Ptr CString -> Ptr (StablePtr AmiModel) -> Ptr CString -> IO Int
+
+data AmiModel = AmiModel {
+      paramsOut :: StablePtr CString
+    , msgPtr    :: StablePtr CString
+    }
 
 amiInit :: Ptr CDouble -> CInt -> CInt -> CDouble -> CDouble ->
-           CString -> Ptr CString -> Ptr (Ptr ()) -> Ptr CString -> IO Int
+           CString -> Ptr CString -> Ptr (StablePtr AmiModel) -> Ptr CString -> IO Int
 amiInit impulse_matrix row_size aggressors sample_interval bit_time
-        ami_parameters_in ami_parameters_out ami_memory_handle msgPtr
+        ami_parameters_in ami_parameters_out ami_memory_handle msgHndl
     | impulse_matrix == nullPtr = return 0
     | otherwise = do
         impulse    <- peekArray (fromIntegral row_size) impulse_matrix
@@ -28,16 +33,29 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
         putStrLn $ "Sample Interval: " ++ (show sample_interval)
         putStrLn $ "Bit Time: " ++ (show bit_time)
         putStrLn $ "AMI Parameters: "
-        case parse amiToken "ami_parameters_in" amiParams of
+        msg <- case parse amiToken "ami_parameters_in" amiParams of
             Left e -> do putStrLn "Error parsing input:"
                          print e
-                         msg <- newCString "Error parsing AMI parameters!" 
-                         gMsgPtr <- newStablePtr msg -- Required to keep `msg' from being garbage collected.
-                         poke msgPtr msg
-                         return 0
+                         newCString "Error parsing AMI parameters!" 
             Right r -> do print r
-                          msg <- newCString "AMI parameters parsed successfully." 
-                          gMsgPtr <- newStablePtr msg
-                          poke msgPtr msg
-                          return 1
+                          newCString "AMI parameters parsed successfully." 
+        tmpMsgPtr <- newStablePtr msg
+        poke msgHndl msg
+        prms <- newCString "No output params, yet."
+        tmpParamsOut <- newStablePtr prms
+        poke ami_parameters_out prms
+        self <- newStablePtr $ AmiModel {
+                                  paramsOut = tmpParamsOut
+                                , msgPtr    = tmpMsgPtr
+                               }
+        poke ami_memory_handle self
+        return 1
+
+amiClose :: StablePtr AmiModel -> IO Int
+amiClose selfPtr = do
+    self <- deRefStablePtr selfPtr
+    freeStablePtr (paramsOut self)
+    freeStablePtr (msgPtr self)
+    freeStablePtr selfPtr
+    return 1
 

@@ -14,6 +14,8 @@ int main(int argc, char *argv[]) {
     char        ami_str[65536]     = "";
     double      impulse[VEC_SIZE]  = {0., 0.1, 0.4, 1.0, 0.9, 0.6, 0.5, 0.0};
     char *      msgPtr             = NULL;
+    char *      parmsOut           = NULL;
+    void *      memPtr             = NULL;
     // AMI_Init function parameters
     double *    impulse_matrix     = impulse;
     long        row_size           = VEC_SIZE;
@@ -21,8 +23,8 @@ int main(int argc, char *argv[]) {
     double      sample_interval    = 1.e-12;
     double      bit_time           = 100.e-12;
     char *      AMI_parameters_in  = ami_str;
-    char **     AMI_parameters_out = NULL;
-    void **     AMI_memory_handle  = NULL;
+    char **     AMI_parameters_out = &parmsOut;
+    void **     AMI_memory_handle  = &memPtr;
     char **     msg                = &msgPtr;
 
     if (argc > 1)
