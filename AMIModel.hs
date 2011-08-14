@@ -20,15 +20,16 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
         ami_parameters_in ami_parameters_out ami_memory_handle msg
     | impulse_matrix == nullPtr = return 0
     | otherwise = do
-        putStrLn "Inside amiInit."
         impulse    <- peekArray (fromIntegral row_size) impulse_matrix
-        putStrLn "Inside amiInit."
         amiParams  <- peekCString ami_parameters_in
         putStrLn "amiInit got:"
         putStrLn $ "Impulse: " ++ (show impulse)
         putStrLn $ "Sample Interval: " ++ (show sample_interval)
         putStrLn $ "Bit Time: " ++ (show bit_time)
-    --    putStrLn $ "AMI Parameters: " ++ (show (parse amiToken amiParams))
-        putStrLn $ "AMI Parameters: " ++ amiParams
+        putStrLn $ "AMI Parameters: "
+        case parse amiToken "ami_parameters_in" amiParams of
+            Left e -> do putStrLn "Error parsing input:"
+                         print e
+            Right r -> print r
         return 1
 
