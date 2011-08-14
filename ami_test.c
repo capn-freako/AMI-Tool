@@ -13,6 +13,7 @@ int main(int argc, char *argv[]) {
     char        line[MAX_LINE_LEN] = "\n";
     char        ami_str[65536]     = "";
     double      impulse[VEC_SIZE]  = {0., 0.1, 0.4, 1.0, 0.9, 0.6, 0.5, 0.0};
+    char *      msgPtr             = NULL;
     // AMI_Init function parameters
     double *    impulse_matrix     = impulse;
     long        row_size           = VEC_SIZE;
@@ -22,7 +23,7 @@ int main(int argc, char *argv[]) {
     char *      AMI_parameters_in  = ami_str;
     char **     AMI_parameters_out = NULL;
     void **     AMI_memory_handle  = NULL;
-    char **     msg                = NULL;
+    char **     msg                = &msgPtr;
 
     if (argc > 1)
         strcpy (ami_filename, argv[1]);
@@ -35,7 +36,6 @@ int main(int argc, char *argv[]) {
         strcat (ami_str, line);
     }
 
-    printf ("Sending in:\n%s", AMI_parameters_in);
     if (!AMI_Init(
         impulse_matrix,
         row_size,
@@ -47,6 +47,10 @@ int main(int argc, char *argv[]) {
         AMI_memory_handle,
         msg))
             printf ("Error: AMI_Init call unsuccessful!\n");
+    if (msgPtr)
+        printf ("Received this message from AMI_Init: %s\n", msgPtr);
+    else
+        printf ("Received no message from AMI_Init.\n");
 
     AMI_Close(NULL);
 
