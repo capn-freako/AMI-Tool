@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     else
         printf ("Received no message from AMI_Init.\n");
 
-    AMI_Close(NULL);
+    AMI_Close(memPtr);
 
     return 0;
 }

@@ -76,7 +76,7 @@ long AMI_Close(
     void *      AMI_memory
 ) {
     if( AMI_memory ) {
-        free( AMI_memory );
+        amiClose( AMI_memory );
     }
 
     // After cleaning up everything else, shut down the Haskell RTS.
