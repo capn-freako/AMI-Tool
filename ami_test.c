@@ -49,10 +49,16 @@ int main(int argc, char *argv[]) {
         AMI_memory_handle,
         msg))
             printf ("Error: AMI_Init call unsuccessful!\n");
+
     if (msgPtr)
         printf ("Received this message from AMI_Init: %s\n", msgPtr);
     else
         printf ("Received no message from AMI_Init.\n");
+
+    if (parmsOut)
+        printf ("Parameters from AMI_Init:\n%s\n", parmsOut);
+    else
+        printf ("No parameters from AMI_Init.\n");
 
     AMI_Close(memPtr);
 

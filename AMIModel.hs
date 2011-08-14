@@ -47,15 +47,14 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
     | otherwise = do
         impulse      <- peekArray (fromIntegral row_size) impulse_matrix
         amiParams    <- peekCString ami_parameters_in
-        msg          <- case parse amiToken "ami_parameters_in" amiParams of
-                            Left e  -> do putStrLn "Error parsing input:"
-                                          print e
-                                          newCString "Error parsing AMI parameters!" 
-                            Right r -> do print r
-                                          newCString "AMI parameters parsed successfully." 
+        (amiTree, msg) <- case parse amiToken "ami_parameters_in" amiParams of
+                            Left e  -> do msg' <- newCString $ "Error parsing input: " ++ (show e)
+                                          return (("ParseError", Tokens []), msg')
+                            Right r -> do msg' <- newCString "AMI parameters parsed successfully." 
+                                          return (r, msg')
         tmpMsgPtr    <- newStablePtr msg -- Protecting `msg' from the garbage collector.
         poke msgHndl msg                 -- Note that we poke `msg', not `tmpMsgPtr', into `msgHndl'.
-        prms         <- newCString "No output params, yet."
+        prms         <- newCString $ show amiTree
         tmpParamsOut <- newStablePtr prms
         poke ami_parameters_out prms
         self         <- newStablePtr $ AmiModel {          -- Storing pointers to these protected entities,
