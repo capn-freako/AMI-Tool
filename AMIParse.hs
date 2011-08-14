@@ -1,12 +1,21 @@
 module AMIParse where
 
 import Text.ParserCombinators.Parsec
+import Data.List
 
 type AmiToken = (String, AmiExp)
 
 data AmiExp   = Vals [String]
               | Tokens [AmiToken]
-    deriving (Show)
+instance Show AmiExp where
+    show = showTree ""
+
+showTree :: String -> AmiExp -> String
+showTree _ (Vals strs)        = ": " ++ (intercalate ", " strs) ++ "\n"
+showTree indent (Tokens toks) = ":\n" ++ (concat $ map (showToken ('\t' : indent)) toks)
+
+showToken :: String -> AmiToken -> String
+showToken indent tok = indent ++ (fst tok) ++ (showTree indent (snd tok))
 
 -- This is the AMI specific parser.
 amiToken :: Parser AmiToken
