@@ -17,7 +17,12 @@ int hs_started = 0;
 void HsStart()
 {
     int argc = 1;
-    char* argv[] = {"ghcDll", NULL}; // argv must end with NULL
+    char* argv[] = {"ghcDll",
+/*                    "+RTS",
+                    "-hc",
+                    "-p",
+                    "-K100M",*/
+                    NULL}; // argv must end with NULL
 
     // Initialize Haskell runtime
     char** args = argv;
@@ -25,7 +30,7 @@ void HsStart()
 
     // Tell Haskell about all root modules
     #ifdef __GLASGOW_HASKELL__
-        hs_add_root(__stginit_AMIParse);
+        hs_add_root(__stginit_AMIModel);
     #endif
 
     // Set global flag.
