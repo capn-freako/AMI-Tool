@@ -1,21 +1,25 @@
-CFLAGS += -I/home/dbanas/ghc-6.12.3/includes/ -g
+GCC = gcc
+CFLAGS += -I/usr/lib/ghc-6.12.3/include/ -g -fPIC
 
 HC      = ghc
 HC_OPTS = -cpp $(EXTRA_HC_OPTS)
-EXTRA_HC_OPTS = -package parsec
-HC_LOPTS = -no-hs-main
+EXTRA_HC_OPTS = -package parsec -shared
+HC_LOPTS = -no-hs-main # -shared
 #GHCOPTS := -prof -auto-all -caf-all
 
 HSRCS = AMIParse.hs AMIModel.hs
 CSRCS = ami_model.c ami_test.c
 SRCS  = $(HSRCS) $(CSRCS)
-OBJS = AMIParse.o  AMIModel.o  ami_model.o ami_test.o AMIModel_stub.o 
+OBJS = AMIParse.o  AMIModel.o  ami_model.o AMIModel_stub.o 
 
 .SUFFIXES : .o .hs .hi .lhs .hc .s .c
 
 all: ami_test
 
-ami_test: $(OBJS)
+ami_test: ami_test.o | libami.so
+	$(HC) $(HC_LOPTS) -dynamic -o $@ -L. -lami $^
+
+libami.so : $(OBJS)
 	rm -f $@
 	$(HC) -o $@ $(HC_OPTS) $(HC_LOPTS) $^
 

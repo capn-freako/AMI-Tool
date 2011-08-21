@@ -7,8 +7,8 @@ import Foreign.StablePtr
 import Foreign.Storable
 import Foreign.C.Types
 import Foreign.C.String
-import MarshalArray
-import MarshalError
+import Foreign.Marshal.Array
+import Foreign.Marshal.Error
 import Text.ParserCombinators.Parsec
 import AMIParse
 
