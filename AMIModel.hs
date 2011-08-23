@@ -45,7 +45,6 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
         ami_parameters_in ami_parameters_out ami_memory_handle msgHndl
     | impulse_matrix == nullPtr = return 0
     | otherwise = do
-        putStrLn "I'm here."
         impulse      <- peekArray (fromIntegral row_size) impulse_matrix
         amiParams    <- peekCString ami_parameters_in
         (amiTree, msg) <- case parse amiToken "ami_parameters_in" amiParams of
@@ -55,7 +54,7 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
                                           return (r, msg')
         tmpMsgPtr    <- newStablePtr msg -- Protecting `msg' from the garbage collector.
         poke msgHndl msg                 -- Note that we poke `msg', not `tmpMsgPtr', into `msgHndl'.
-        prms         <- newCString $ show amiTree
+        prms         <- newCString $ "(" ++ (fst amiTree) ++ show (snd amiTree) ++ ")"
         tmpParamsOut <- newStablePtr prms
         poke ami_parameters_out prms
         self         <- newStablePtr $ AmiModel {          -- Storing pointers to these protected entities,

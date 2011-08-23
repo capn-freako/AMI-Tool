@@ -11,11 +11,11 @@ instance Show AmiExp where
     show = showTree ""
 
 showTree :: String -> AmiExp -> String
-showTree _ (Vals strs)        = ": " ++ (intercalate ", " strs) ++ "\n"
-showTree indent (Tokens toks) = ":\n" ++ (concat $ map (showToken ('\t' : indent)) toks)
+showTree _ (Vals strs)        = " " ++ (intercalate " " strs) ++ "\n"
+showTree indent (Tokens toks) = "\n" ++ (concat $ map (showToken ('\t' : indent)) toks)
 
 showToken :: String -> AmiToken -> String
-showToken indent tok = indent ++ (fst tok) ++ (showTree indent (snd tok))
+showToken indent tok = indent ++ "(" ++ (fst tok) ++ (showTree indent (snd tok)) ++ indent ++ ")\n"
 
 -- This is the AMI specific parser.
 amiToken :: Parser AmiToken
@@ -62,5 +62,5 @@ quotedVal = do
     char '"'
     res <- many (satisfy (/= '"'))
     char '"'
-    return res
+    return $ '"' : res ++ "\""
 
