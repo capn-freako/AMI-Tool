@@ -7,10 +7,10 @@ EXTRA_HC_OPTS = -package parsec -shared
 HC_LOPTS = -no-hs-main # -shared
 #GHCOPTS := -prof -auto-all -caf-all
 
-HSRCS = AMIParse.hs AMIModel.hs
+HSRCS = AMIParse.hs AMIModel.hs ApplicativeParsec.hs
 CSRCS = ami_model.c ami_test.c
 SRCS  = $(HSRCS) $(CSRCS)
-OBJS = AMIParse.o  AMIModel.o  ami_model.o AMIModel_stub.o 
+OBJS = AMIParse.o  AMIModel.o  ami_model.o AMIModel_stub.o ApplicativeParsec.o
 
 .SUFFIXES : .o .hs .hi .lhs .hc .s .c
 
@@ -56,7 +56,9 @@ AMIModel_stub.o: AMIModel.hs
 	$(HC) -c $< $(HC_OPTS)
 
 # DO NOT DELETE: Beginning of Haskell dependencies
+ApplicativeParsec.o : ApplicativeParsec.hs
 AMIParse.o : AMIParse.hs
+AMIParse.o : ApplicativeParsec.hi
 AMIModel.o : AMIModel.hs
 AMIModel.o : AMIParse.hi
 # DO NOT DELETE: End of Haskell dependencies
