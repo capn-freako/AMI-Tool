@@ -3,14 +3,14 @@ CFLAGS += -I/usr/lib/ghc-6.12.3/include/ -g -fPIC
 
 HC      = ghc
 HC_OPTS = -cpp $(EXTRA_HC_OPTS)
-EXTRA_HC_OPTS = -package parsec
-HC_LOPTS = -no-hs-main -shared -package parsec
+EXTRA_HC_OPTS = -package parsec -package dsp
+HC_LOPTS = -no-hs-main -shared -package parsec -package dsp
 #GHCOPTS := -prof -auto-all -caf-all
 
-HSRCS = AMIParse.hs AMIModel.hs ApplicativeParsec.hs
+HSRCS = AMIParse.hs AMIModel.hs ApplicativeParsec.hs ExmplUsrModel.hs
 CSRCS = ami_model.c ami_test.c
 SRCS  = $(HSRCS) $(CSRCS)
-OBJS = AMIParse.o  AMIModel.o  ami_model.o AMIModel_stub.o ApplicativeParsec.o
+OBJS = AMIParse.o  AMIModel.o  ami_model.o AMIModel_stub.o ApplicativeParsec.o ExmplUsrModel.o
 
 .SUFFIXES : .o .hs .hi .lhs .hc .s .c
 .PHONY : all depend rebuild clean
@@ -58,9 +58,11 @@ AMIModel_stub.o: AMIModel.hs
 	$(HC) -c $< $(HC_OPTS)
 
 # DO NOT DELETE: Beginning of Haskell dependencies
+ExmplUsrModel.o : ExmplUsrModel.hs
 ApplicativeParsec.o : ApplicativeParsec.hs
 AMIParse.o : AMIParse.hs
 AMIParse.o : ApplicativeParsec.hi
 AMIModel.o : AMIModel.hs
+AMIModel.o : ExmplUsrModel.hi
 AMIModel.o : AMIParse.hi
 # DO NOT DELETE: End of Haskell dependencies

@@ -47,3 +47,16 @@ quotedVal = char '"' *> liftA quoteTok (many (satisfy (/= '"'))) <* char '"'
 quoteTok :: String -> String
 quoteTok s = '"' : s ++ "\""
 
+getAmiExp :: AmiToken -> [String] -> Maybe AmiExp
+getAmiExp _ [] = Nothing
+getAmiExp amiToken (l:ls)
+    | fst amiToken == l =
+          case ls of
+              [] -> Just (snd amiToken)
+              _  -> case snd amiToken of
+                        Tokens tokens -> case [t | t <- tokens, fst t == head ls] of
+                                             [token] -> getAmiExp token ls
+                                             _       -> Nothing
+                        _             -> Nothing
+    | otherwise = Nothing
+

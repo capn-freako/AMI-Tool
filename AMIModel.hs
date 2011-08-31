@@ -11,6 +11,7 @@ import Foreign.Marshal.Array
 import Foreign.Marshal.Error
 import Text.ParserCombinators.Parsec
 import AMIParse
+import ExmplUsrModel
 
 -- These make certain of our Haskell functions callable from C.
 -- Note) They are duplicates of the function signatures, below, with the
@@ -43,15 +44,23 @@ amiInit :: Ptr CDouble -> CInt -> CInt -> CDouble -> CDouble ->
            CString -> Ptr CString -> Ptr (StablePtr AmiModel) -> Ptr CString -> IO Int
 amiInit impulse_matrix row_size aggressors sample_interval bit_time
         ami_parameters_in ami_parameters_out ami_memory_handle msgHndl
-    | impulse_matrix == nullPtr = return 0
-    | otherwise = do
-        impulse      <- peekArray (fromIntegral row_size) impulse_matrix
+    = do
+        -- C to Haskell variable conversion
+        impulse      <- case impulse_matrix of
+                          nullPtr -> return []
+                          _       -> peekArray (fromIntegral row_size) impulse_matrix
+        -- AMI parameter parsing
         amiParams    <- peekCString ami_parameters_in
         (amiTree, msg) <- case parse amiToken "ami_parameters_in" amiParams of
                             Left e  -> do msg' <- newCString $ "Error parsing input: " ++ show e
                                           return (("ParseError", Tokens []), msg')
                             Right r -> do msg' <- newCString "AMI parameters parsed successfully." 
                                           return (r, msg')
+        -- model specific channel convolution
+        h <- return $ usrAmiInit amiTree (map realToFrac impulse)
+        pokeArray impulse_matrix (map realToFrac h)
+
+        -- static memory allocation
         tmpMsgPtr    <- newStablePtr msg -- Protecting `msg' from the garbage collector.
         poke msgHndl msg                 -- Note that we poke `msg', not `tmpMsgPtr', into `msgHndl'.
         prms         <- newCString $ "(" ++ fst amiTree ++ show (snd amiTree) ++ ")"
@@ -62,6 +71,7 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
                                 , msgPtr    = tmpMsgPtr    -- when we're closed.
                                }
         poke ami_memory_handle self
+
         return 1
 
 -- Our Haskell implementation of `AMI_Close'.
