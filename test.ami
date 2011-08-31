@@ -1,14 +1,14 @@
 (testAMI
     (Description "a simple AMI file, for testing")
+    (Reserved_Parameters
+        (Ignore_Bits (Usage Info) (Type Integer) (Default 21))
+    )
     (Model_Specific
         (Mode (Usage InOut)(List 0 1)
             (Type Integer)(Default 0)
             (Label "Bypass" "In")
             (Description "Filter mode selector")
         )
-    )
-    (Reserved_Parameters
-        (Ignore_Bits (Usage Info) (Type Integer) (Default 21))
     )
 )
 
