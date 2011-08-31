@@ -46,9 +46,10 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
         ami_parameters_in ami_parameters_out ami_memory_handle msgHndl
     = do
         -- C to Haskell variable conversion
-        impulse      <- case impulse_matrix of
-                          nullPtr -> return []
-                          _       -> peekArray (fromIntegral row_size) impulse_matrix
+        impulse      <- if (impulse_matrix == nullPtr) then
+                            return []
+                        else
+                            peekArray (fromIntegral row_size) impulse_matrix
         -- AMI parameter parsing
         amiParams    <- peekCString ami_parameters_in
         (amiTree, msg) <- case parse amiToken "ami_parameters_in" amiParams of
