@@ -1,14 +1,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dlfcn.h>
 //#include "HsFFI.h"
-#include "ami_model.h"
+//#include "ami_model.h"
 
 #define DEF_AMI_FILE "test.ami"
 #define VEC_SIZE       8
 #define MAX_LINE_LEN 256
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
+    void *lib_handle;
+    char *error;
+    long (*AMI_Init)(
+        double *    impulse_matrix,
+        long        row_size,
+        long        aggressors,
+        double      sample_interval,
+        double      bit_time,
+        char *      AMI_parameters_in,
+        char **     AMI_parameters_out,
+        void **     AMI_memory_handle,
+        char **     msg
+    );
+    long (*AMI_Close)(
+        void *      AMI_memory
+    );
     char        ami_filename[256]  = DEF_AMI_FILE;
     FILE *      ami_file           = NULL;
     char        line[MAX_LINE_LEN] = "\n";
@@ -39,7 +56,25 @@ int main(int argc, char *argv[]) {
         strcat (ami_str, line);
     }
 
-    if (!AMI_Init(
+    lib_handle = dlopen("libami.so", RTLD_LAZY);
+    if (!lib_handle) {
+        fprintf(stderr, "%s\n", dlerror());
+        exit(1);
+    }
+
+    AMI_Init = dlsym(lib_handle, "AMI_Init");
+    if ((error = dlerror()) != NULL)  {
+        fprintf(stderr, "%s\n", error);
+        exit(1);
+    }
+
+    AMI_Close = dlsym(lib_handle, "AMI_Close");
+    if ((error = dlerror()) != NULL)  {
+        fprintf(stderr, "%s\n", error);
+        exit(1);
+    }
+
+    if (!(*AMI_Init)(
         impulse_matrix,
         row_size,
         aggressors,
@@ -61,8 +96,9 @@ int main(int argc, char *argv[]) {
     else
         printf ("No parameters from AMI_Init.\n");
 
-    AMI_Close(memPtr);
+    (*AMI_Close)(memPtr);
 
+    dlclose(lib_handle);
     return 0;
 }
 
