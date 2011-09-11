@@ -9,7 +9,8 @@ usrAmiInit amiTree impulse
     -- Change the line, below, as follows:
     --  - Change "testAMI" to the root name of your AMI parameter tree.
     --  - Change "Mode" to the name you've given to the filter mode selection parameter.
-    = case getAmiExp amiTree ["testAMI", "Model_Specific", "Mode", "Default"] of
+--    = case getAmiExp amiTree ["testAMI", "Model_Specific", "Mode", "Default"] of
+    = case getAmiExp amiTree ["testAMI", "Mode"] of
         -- Change the `Vals' lines, below, to reflect your possible values of filter
         -- mode, and the corresponding action to be taken in that mode, adding/deleting
         -- lines as necessary.
