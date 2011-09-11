@@ -3,8 +3,8 @@ CFLAGS += -I/usr/lib/ghc-6.12.3/include/ -g -fPIC
 
 HC      = ghc
 HC_OPTS = -cpp $(EXTRA_HC_OPTS)
-EXTRA_HC_OPTS = -package parsec -package dsp -static
-HC_LOPTS = -no-hs-main -shared -package parsec -package dsp -static
+EXTRA_HC_OPTS = -package parsec-3.1.1 -package dsp -dynamic -fPIC
+HC_LOPTS = -shared -dynamic -package parsec-3.1.1 -package dsp -lHSrts -L/usr/lib/ghc-6.12.3/ -lm -lffi -lrt
 #GHCOPTS := -prof -auto-all -caf-all
 
 HSRCS = AMIParse.hs AMIModel.hs ApplicativeParsec.hs ExmplUsrModel.hs
@@ -15,10 +15,9 @@ OBJS = AMIParse.o  AMIModel.o  ami_model.o AMIModel_stub.o ApplicativeParsec.o E
 .SUFFIXES : .o .hs .hi .lhs .hc .s .c
 .PHONY : all depend rebuild clean
 
-all: ami_test
+all: ami_test libami.so
 
-ami_test: ami_test.o libami.so
-	#$(HC) -dynamic -o $@ -L. -lami ami_test.o
+ami_test: ami_test.o 
 	$(CC) -rdynamic -o $@ ami_test.o -ldl
 
 libami.so : $(OBJS)
