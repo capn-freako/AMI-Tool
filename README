@@ -1,0 +1,8 @@
+This is the `AMITool' package, written by David Banas.
+
+This package is intended to provide the essential tools
+necessary for creating AMI models in Haskell.
+
+For more info, please, visit the home page for this project:
+http://www.haskell.org/haskellwiki/AMI_Tool
+
