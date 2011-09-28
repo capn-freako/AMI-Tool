@@ -1,0 +1,2 @@
+WARNING: No impulse response found in AMI_Init() config file.
+* ERROR: Could not load AMI_Init() config file test_cfg.csv. Aborting.

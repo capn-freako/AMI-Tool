@@ -12,10 +12,15 @@ instance Show AmiExp where
 
 showTree :: String -> AmiExp -> String
 showTree _ (Vals strs)        = " " ++ (intercalate " " strs) ++ "\n"
-showTree indent (Tokens toks) = "\n" ++ (concat $ map (showToken ('\t' : indent)) toks)
+showTree indent (Tokens toks) = "\n" ++ (concat $ map (showToken (' ' : indent)) toks)
 
 showToken :: String -> AmiToken -> String
 showToken indent tok = indent ++ "(" ++ (fst tok) ++ (showTree indent (snd tok)) ++ indent ++ ")\n"
+
+amiGetInt :: AmiExp -> Maybe Int
+amiGetInt (Tokens _)    = Nothing
+amiGetInt (Vals [])     = Nothing
+amiGetInt (Vals (x:xs)) = Just (read x)
 
 -- This is the AMI specific parser.
 amiToken :: Parser AmiToken

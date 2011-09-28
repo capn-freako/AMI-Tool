@@ -77,6 +77,27 @@ long AMI_Init(
     return res;
 }
 
+long AMI_GetWave(
+    double *    wave_in,
+    long        wave_size,
+    double *    clock_times,
+    char **     AMI_parameters_out,
+    void *      AMI_memory
+) {
+    long res;
+
+    // Call the Haskell function.
+    res = amiGetWave(
+        wave_in,
+        wave_size,
+        clock_times,
+        AMI_parameters_out,
+        AMI_memory
+    );
+
+    return res;
+}
+
 long AMI_Close(
     void *      AMI_memory
 ) {
