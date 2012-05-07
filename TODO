@@ -1,0 +1,2 @@
+- Remove hard-wired *.so file naming from `ami_test.c'.
+

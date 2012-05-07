@@ -1,6 +1,9 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
+
 module ExmplUsrModel (
     usrAmiInit
   , usrAmiGetWave
+  , AmiModel(..)
 ) where
 
 import DSP.Filter.FIR.FIR
@@ -8,43 +11,152 @@ import DSP.Filter.FIR.Taps
 import Data.Array
 import Data.Complex
 import Numeric.Transform.Fourier.FFT
+--import Text.ParserCombinators.Parsec hiding (State)
+--import MaybeT
+--import EitherT
+--import Control.Monad.State
+import Foreign.Ptr
+import Foreign.StablePtr
+import Foreign.Storable
+import Foreign.C.Types
+import Foreign.C.String
+import Foreign.Marshal.Array
+import Foreign.Marshal.Error
+
 import AMIParse
-import MaybeT
+import Filter
 
-    -- Change the line, below, as follows:
-    --  - Change "testAMI" to the root name of your AMI parameter tree.
-    --  - Change "Mode" to the name you've given to the filter mode selection parameter.
-        -- Change the `Vals' lines, below, to reflect your possible values of filter
-        -- mode, and the corresponding action to be taken in that mode, adding/deleting
-        -- lines as necessary.
-        -- That's it; no more changes are required.
+{- These constants define the dimensionality of our initialization data
+arrays. Typically, these consist of: pole/fract pairs, x/y table data for
+applying non-linear signal compression, etc. These tables (i.e. - arrays)
+are ,typically, indexed by things such as: process, bandwidth, d.c. gain,
+filter mode, etc., which the user selects, via some interface in the EDA tool.
+-}
+numProc  = 3         -- # of process corners
+numBW    = 2         -- # of bandwidth selections
+numDC    = 2         -- # of d.c. gain selections
+numMode  = 3         -- # of filter modes
+myRootName = "testAMI" -- root name of our *.ami file
 
-usrAmiInit :: AmiToken -> Double -> [Double] -> [Double]
-usrAmiInit amiTree sample_interval impulse
-    = case do proc      <- (getAmiExp amiTree ["testAMI", "Process"]   >>= amiGetInt)
-              bandwidth <- (getAmiExp amiTree ["testAMI", "Bandwidth"] >>= amiGetInt)
-              dcGain    <- (getAmiExp amiTree ["testAMI", "Dcgain"]    >>= amiGetInt)
-              mode      <- (getAmiExp amiTree ["testAMI", "Mode"]      >>= amiGetInt)
-              return (proc, bandwidth, dcGain, mode)
-        of
-          Nothing                              -> []
-          Just (proc, bandwidth, dcGain, mode) -> 
+{- This defines the structure of `global' static data we need to preserve,
+in between calls to `amiInit', `amiGetWave', and, finally, `amiClose'.
+
+We'll allocate space for this structure, during initialization (i.e. - while
+we're in `amiInit'), and send a pointer to that space back to the calling
+program, via the `ami_memory_handle' argument. The calling program will store
+that pointer and send it back to us, when it calls `amiGetWave', or `amiClose',
+so that we may free the space, only after the World is completely finished
+with us.
+
+In this way, we avoid a global pointer within our own name space, and remain
+reusable.
+-}
+
+data AmiModel = AmiModel {
+      rootName    :: String
+    , paramsOut   :: CString
+    , msgPtr      :: CString
+    , amiParams   :: StablePtr AmiToken
+--    , filterState :: StablePtr [FilterState (Complex Double)]
+    , filterState :: StablePtr [FilterState Double]
+    }
+
+-- Our model specific implementation of `AMI_Init':
+usrAmiInit :: CString -> Double -> [Double] -> IO ([Double], StablePtr AmiModel)
+usrAmiInit ami_parameters_in sample_interval impulse = do
+    -- AMI parameter parsing
+    amiParams      <- peekCString ami_parameters_in
+    (amiTree, msg) <- case parse amiToken "ami_parameters_in" amiParams of
+                        Left e  -> do msg' <- newCString $ "Error parsing input: " ++ show e
+                                      return (("ParseError", Tokens []), msg')
+                        Right r -> do msg' <- newCString "AMI parameters parsed successfully." 
+                                      return (r, msg')
+
+    -- model specific channel convolution
+    (self, newImpulse) <- case
+         -- There should be a 1:1 correspondence between the values fetched, below,
+         -- and the numerical constants defined, above.
+         do process   <- (getAmiParam amiTree ["Process"]   >>= amiGetInt)
+            bandwidth <- (getAmiParam amiTree ["Bandwidth"] >>= amiGetInt)
+            dcGain    <- (getAmiParam amiTree ["Dcgain"]    >>= amiGetInt)
+            mode      <- (getAmiParam amiTree ["Mode"]      >>= amiGetInt)
+            return (process, bandwidth, dcGain, mode)
+         of
+          -- There was an error fetching the params., above.
+          Nothing -> do
+              tmpParamsOut   <- newCString ""
+              tmpMsgPtr      <- newStablePtr msg
+              tmpAmiParams   <- newStablePtr amiTree
+              theFilterState <- return $ [FilterState [] [] []]
+              tmpFilterState <- newStablePtr theFilterState
+              myAmiModel     <- return AmiModel {
+                                          paramsOut   = tmpParamsOut
+                                        , msgPtr      = msg
+                                        , amiParams   = tmpAmiParams
+                                        , filterState = tmpFilterState
+                                        , rootName    = myRootName
+                                       }
+              self           <- newStablePtr myAmiModel
+              return (self, [])
+          -- Params. were fetched successfully.
+          Just (process, bandwidth, dcGain, mode) -> do
+              putStr "process: "
+              putStrLn $ show process
+              putStr "bandwidth: "
+              putStrLn $ show bandwidth
+              putStr "dcGain: "
+              putStrLn $ show dcGain
+              putStr "mode: "
+              putStrLn $ show mode
+              prms         <- newCString $ "(" ++ fst amiTree ++ (filter (/= '\n') $ show (snd amiTree))
+                                               ++ ")"
+              -- Convert the poles from S to Z domain.
+              poles        <- return $ map (exp . ((sample_interval :+ 0) *) . combComp)
+                                           (stage0_poles ! (process, bandwidth, dcGain, mode))
+{-              poles <- let reals  = fst seps
+                           imags  = snd seps
+                           imags' = map (sample_interval *) imags
+                           seps   = unzip (stage0_poles ! (process, bandwidth, dcGain, mode))
+                       in return $ map (exp . combComp) (zip reals imags') -}
+              -- Use the fracts, as they are.
+              fracts       <- return $ map combComp
+                                           (stage0_fract ! (process, bandwidth, dcGain, mode))
+              putStr "Poles: "
+              putStrLn $ show poles
+              putStr "Fracts: "
+              putStrLn $ show fracts
+              taps         <- return [0.0]
+              filterStates <- return $ map (uncurry (uncurry FilterState))
+                                           [(([1, realPart (-p)], [0, realPart (-f * p)]), taps)
+--                                           [(([1 :+ 0, (-p)], [0 :+ 0, (-f * p)]), taps)
+                                             | (f, p) <- zip fracts poles]
+              -- Set up static storage pointers for placement in the model memory structure.
+              tmpParamsOut   <- newStablePtr prms -- so that we'll be able to free the space,
+              tmpMsgPtr      <- newStablePtr msg  -- when we're closed.
+              tmpAmiParams   <- newStablePtr amiTree
+              --tmpFilterState <- newStablePtr theFilterState
+              tmpFilterState <- newStablePtr filterStates
+              myAmiModel     <- return AmiModel {
+                                          paramsOut   = prms
+                                        , msgPtr      = msg
+                                        , amiParams   = tmpAmiParams
+                                        , filterState = tmpFilterState
+                                        , rootName    = myRootName
+                                       }
+              self           <- newStablePtr myAmiModel
               case mode of
-                  0         -> impulse -- Bypassed.
-                  -- `hs' is H(s), the transfer function of our filter.
-                  otherwise -> map realPart $ elems $ ifft $ hs
-                                   .* (fft (listArray (0, length impulse - 1) (map (:+ 0) impulse)))
-                     where hs = listArray (0, length impulse - 1)
-                                    $ foldl add (replicate (length impulse) (0 :+ 0))
-                                            [[fract / (1 - s / pole) | s <- map (* ((0 :+ 1) * 2 * pi))
-                                              $ map (:+ 0) $ freqs ++ (1 / (2 * sample_interval))
-                                                           : (reverse (map (* (-1)) (tail freqs)))
-                                             ] | (fract, pole)
-                                                 <- zip (map combComp (stage0_fract ! (proc, bandwidth, dcGain, mode)))
-                                                        (map combComp (stage0_poles ! (proc, bandwidth, dcGain, mode)))
-                                            ]
-                                   where freqs = map (* (1 / (sample_interval * fromIntegral (length impulse))))
-                                                     $ map fromIntegral [0..((length impulse) `div` 2 - 1)]
+                  0         -> return (self, impulse) -- Bypassed.
+                  otherwise -> return (self, filtOut)
+                                where filtOut = foldl add (take (length impulse) (repeat 0.0)) $
+                                                      map (\fs -> runAuto (filterAuto convT fs)
+--                                                                          (map (:+ 0) impulse))
+                                                                          impulse)
+                                                          filterStates
+    return (newImpulse, self)
+
+-- Helper functions
+getAmiParam :: AmiToken -> [String] -> Maybe AmiExp
+getAmiParam amiTree labels = getAmiExp amiTree (myRootName : labels)
 
 add :: (Num t) => [t] -> [t] -> [t]
 add xs ys = [x + y | (x, y) <- zip xs ys]
@@ -53,27 +165,38 @@ combComp :: (Double, Double) -> Complex Double
 combComp (r, i) = r :+ i
 
 (.*) :: (Num t, Ix i, Integral i) => Array i t -> Array i t -> Array i t
--- (.*) xs ys = [x * y | (x, y) <- zip xs ys]
 (.*) xs ys = accum (\x y -> x * y) xs (assocs ys)
 
--- Note) We operate with `Use_Init_Out' = `True'.
---       So, we won't repeat the linear filtering performed in `usrAmiInit',
---       here. We'll only apply the non-linear part of our filter, here.
-usrAmiGetWave :: AmiToken -> [Double] -> [Double]
-usrAmiGetWave amiTree wave
-    = case do proc   <- (getAmiExp amiTree ["testAMI", "Process"] >>= amiGetInt)
-              dcGain <- (getAmiExp amiTree ["testAMI", "Dcgain"]  >>= amiGetInt)
-              return (proc, dcGain)
-        of
-          Nothing             -> []
-          Just (proc, dcGain) -> map (compress (zip (stage0_x ! (proc, dcGain)) (stage0_y ! (proc, dcGain)))) wave
+-- combinatorial function `m choose n', where `m' is the length of the input list
+-- Does not include reorderings.
+choose :: [a] -> Int -> [[a]]
+choose [] _             = []
+choose _  0             = []
+choose (x:xs) n
+    | n > length (x:xs) = []
+    | n == 1            = [[x'] | x' <- (x:xs)]
+    | otherwise         = map (x:) (choose xs (n - 1)) ++ choose xs n
+
+-- Our, model specific implementation of `AMI_GetWave':
+usrAmiGetWave :: StablePtr AmiModel -> AmiToken -> [Double] -> IO [Double]
+usrAmiGetWave self amiTree wave =
+    case do process   <- (getAmiParam amiTree ["Process"] >>= amiGetInt)
+            dcGain <- (getAmiParam amiTree ["Dcgain"]  >>= amiGetInt)
+            return (process, dcGain)
+    of
+        Nothing             -> return []
+        Just (process, dcGain) -> do
+--            filtOut <- myFilter self wave
+            filtOut <- return wave
+            return $ map (compress (zip (stage0_x ! (process, dcGain)) (stage0_y ! (process, dcGain)))) filtOut
 
 compress :: [(Double, Double)] -> Double -> Double
 compress tbl x = snd low + ((snd high - snd low) * (x - fst low) / (fst high - fst low)) -- linear interp.
     where low  = head $ reverse $ takeWhile ((<= x) . fst) tbl
           high = head $ filter ((> x) . fst) tbl
 
-stage0_x = listArray ((0,0), (2,1)) [
+-- This is the table of x/y pairs that form our non-linear compression function.
+stage0_x = listArray ((0, 0), (numProc - 1, numDC - 1)) [
     [-1.4914, -1.4715, -1.4516, -1.4317, -1.4118, -1.3919, -1.3720, -1.3522, -1.3323, -1.3124, -1.2925, -1.2726, -1.2527, -1.2329, -1.2130, -1.1931, -1.1732, -1.1533, -1.1334, -1.1135, -1.0937, -1.0738, -1.0539, -1.0340, -1.0141, -0.9942, -0.9744, -0.9545, -0.9346, -0.9147, -0.8948, -0.8749, -0.8550, -0.8352, -0.8153, -0.7954, -0.7755, -0.7556, -0.7357, -0.7158, -0.6960, -0.6761, -0.6562, -0.6363, -0.6164, -0.5965, -0.5767, -0.5568, -0.5369, -0.5170, -0.4971, -0.4772, -0.4573, -0.4375, -0.4176, -0.3977, -0.3778, -0.3579, -0.3380, -0.3182, -0.2983, -0.2784, -0.2585, -0.2386, -0.2187, -0.1988, -0.1790, -0.1591, -0.1392, -0.1193, -0.0994, -0.0795, -0.0597, -0.0398, -0.0199, 0.0000, 0.0199, 0.0398, 0.0597, 0.0795, 0.0994, 0.1193, 0.1392, 0.1591, 0.1790, 0.1988, 0.2187, 0.2386, 0.2585, 0.2784, 0.2983, 0.3182, 0.3380, 0.3579, 0.3778, 0.3977, 0.4176, 0.4375, 0.4573, 0.4772, 0.4971, 0.5170, 0.5369, 0.5568, 0.5767, 0.5965, 0.6164, 0.6363, 0.6562, 0.6761, 0.6960, 0.7158, 0.7357, 0.7556, 0.7755, 0.7954, 0.8153, 0.8352, 0.8550, 0.8749, 0.8948, 0.9147, 0.9346, 0.9545, 0.9744, 0.9942, 1.0141, 1.0340, 1.0539, 1.0738, 1.0937, 1.1135, 1.1334, 1.1533, 1.1732, 1.1931, 1.2130, 1.2329, 1.2527, 1.2726, 1.2925, 1.3124, 1.3323, 1.3522, 1.3720, 1.3919, 1.4118, 1.4317, 1.4516, 1.4715, 1.4914],
     [-1.9689, -1.9426, -1.9164, -1.8901, -1.8639, -1.8376, -1.8113, -1.7851, -1.7588, -1.7326, -1.7063, -1.6801, -1.6538, -1.6276, -1.6013, -1.5751, -1.5488, -1.5226, -1.4963, -1.4701, -1.4438, -1.4176, -1.3913, -1.3651, -1.3388, -1.3126, -1.2863, -1.2601, -1.2338, -1.2076, -1.1813, -1.1551, -1.1288, -1.1026, -1.0763, -1.0501, -1.0238, -0.9976, -0.9713, -0.9451, -0.9188, -0.8925, -0.8663, -0.8400, -0.8138, -0.7875, -0.7613, -0.7350, -0.7088, -0.6825, -0.6563, -0.6300, -0.6038, -0.5775, -0.5513, -0.5250, -0.4988, -0.4725, -0.4463, -0.4200, -0.3938, -0.3675, -0.3413, -0.3150, -0.2888, -0.2625, -0.2363, -0.2100, -0.1838, -0.1575, -0.1313, -0.1050, -0.0788, -0.0525, -0.0263, 0.0000, 0.0263, 0.0525, 0.0788, 0.1050, 0.1313, 0.1575, 0.1838, 0.2100, 0.2363, 0.2625, 0.2888, 0.3150, 0.3413, 0.3675, 0.3938, 0.4200, 0.4463, 0.4725, 0.4988, 0.5250, 0.5513, 0.5775, 0.6038, 0.6300, 0.6563, 0.6825, 0.7088, 0.7350, 0.7613, 0.7875, 0.8138, 0.8400, 0.8663, 0.8925, 0.9188, 0.9451, 0.9713, 0.9976, 1.0238, 1.0501, 1.0763, 1.1026, 1.1288, 1.1551, 1.1813, 1.2076, 1.2338, 1.2601, 1.2863, 1.3126, 1.3388, 1.3651, 1.3913, 1.4176, 1.4438, 1.4701, 1.4963, 1.5226, 1.5488, 1.5751, 1.6013, 1.6276, 1.6538, 1.6801, 1.7063, 1.7326, 1.7588, 1.7851, 1.8113, 1.8376, 1.8639, 1.8901, 1.9164, 1.9426, 1.9689],
     [-1.4914, -1.4715, -1.4516, -1.4317, -1.4118, -1.3919, -1.3720, -1.3522, -1.3323, -1.3124, -1.2925, -1.2726, -1.2527, -1.2329, -1.2130, -1.1931, -1.1732, -1.1533, -1.1334, -1.1135, -1.0937, -1.0738, -1.0539, -1.0340, -1.0141, -0.9942, -0.9744, -0.9545, -0.9346, -0.9147, -0.8948, -0.8749, -0.8550, -0.8352, -0.8153, -0.7954, -0.7755, -0.7556, -0.7357, -0.7158, -0.6960, -0.6761, -0.6562, -0.6363, -0.6164, -0.5965, -0.5767, -0.5568, -0.5369, -0.5170, -0.4971, -0.4772, -0.4573, -0.4375, -0.4176, -0.3977, -0.3778, -0.3579, -0.3380, -0.3182, -0.2983, -0.2784, -0.2585, -0.2386, -0.2187, -0.1988, -0.1790, -0.1591, -0.1392, -0.1193, -0.0994, -0.0795, -0.0597, -0.0398, -0.0199, 0.0000, 0.0199, 0.0398, 0.0597, 0.0795, 0.0994, 0.1193, 0.1392, 0.1591, 0.1790, 0.1988, 0.2187, 0.2386, 0.2585, 0.2784, 0.2983, 0.3182, 0.3380, 0.3579, 0.3778, 0.3977, 0.4176, 0.4375, 0.4573, 0.4772, 0.4971, 0.5170, 0.5369, 0.5568, 0.5767, 0.5965, 0.6164, 0.6363, 0.6562, 0.6761, 0.6960, 0.7158, 0.7357, 0.7556, 0.7755, 0.7954, 0.8153, 0.8352, 0.8550, 0.8749, 0.8948, 0.9147, 0.9346, 0.9545, 0.9744, 0.9942, 1.0141, 1.0340, 1.0539, 1.0738, 1.0937, 1.1135, 1.1334, 1.1533, 1.1732, 1.1931, 1.2130, 1.2329, 1.2527, 1.2726, 1.2925, 1.3124, 1.3323, 1.3522, 1.3720, 1.3919, 1.4118, 1.4317, 1.4516, 1.4715, 1.4914],
@@ -82,7 +205,7 @@ stage0_x = listArray ((0,0), (2,1)) [
     [-1.9689, -1.9426, -1.9164, -1.8901, -1.8639, -1.8376, -1.8113, -1.7851, -1.7588, -1.7326, -1.7063, -1.6801, -1.6538, -1.6276, -1.6013, -1.5751, -1.5488, -1.5226, -1.4963, -1.4701, -1.4438, -1.4176, -1.3913, -1.3651, -1.3388, -1.3126, -1.2863, -1.2601, -1.2338, -1.2076, -1.1813, -1.1551, -1.1288, -1.1026, -1.0763, -1.0501, -1.0238, -0.9976, -0.9713, -0.9451, -0.9188, -0.8925, -0.8663, -0.8400, -0.8138, -0.7875, -0.7613, -0.7350, -0.7088, -0.6825, -0.6563, -0.6300, -0.6038, -0.5775, -0.5513, -0.5250, -0.4988, -0.4725, -0.4463, -0.4200, -0.3938, -0.3675, -0.3413, -0.3150, -0.2888, -0.2625, -0.2363, -0.2100, -0.1838, -0.1575, -0.1313, -0.1050, -0.0788, -0.0525, -0.0263, 0.0000, 0.0263, 0.0525, 0.0788, 0.1050, 0.1313, 0.1575, 0.1838, 0.2100, 0.2363, 0.2625, 0.2888, 0.3150, 0.3413, 0.3675, 0.3938, 0.4200, 0.4463, 0.4725, 0.4988, 0.5250, 0.5513, 0.5775, 0.6038, 0.6300, 0.6563, 0.6825, 0.7088, 0.7350, 0.7613, 0.7875, 0.8138, 0.8400, 0.8663, 0.8925, 0.9188, 0.9451, 0.9713, 0.9976, 1.0238, 1.0501, 1.0763, 1.1026, 1.1288, 1.1551, 1.1813, 1.2076, 1.2338, 1.2601, 1.2863, 1.3126, 1.3388, 1.3651, 1.3913, 1.4176, 1.4438, 1.4701, 1.4963, 1.5226, 1.5488, 1.5751, 1.6013, 1.6276, 1.6538, 1.6801, 1.7063, 1.7326, 1.7588, 1.7851, 1.8113, 1.8376, 1.8639, 1.8901, 1.9164, 1.9426, 1.9689]
     ]
 
-stage0_y = listArray ((0,0), (2,1)) [
+stage0_y = listArray ((0, 0), (numProc - 1, numDC - 1)) [
     [-0.5608, -0.5607, -0.5606, -0.5603, -0.5603, -0.5602, -0.5600, -0.5599, -0.5598, -0.5596, -0.5594, -0.5593, -0.5590, -0.5589, -0.5587, -0.5585, -0.5583, -0.5580, -0.5578, -0.5574, -0.5572, -0.5567, -0.5565, -0.5561, -0.5555, -0.5552, -0.5547, -0.5541, -0.5534, -0.5527, -0.5518, -0.5509, -0.5498, -0.5485, -0.5471, -0.5453, -0.5433, -0.5410, -0.5382, -0.5350, -0.5312, -0.5268, -0.5216, -0.5157, -0.5090, -0.5012, -0.4926, -0.4829, -0.4723, -0.4608, -0.4484, -0.4352, -0.4213, -0.4067, -0.3916, -0.3759, -0.3597, -0.3430, -0.3260, -0.3085, -0.2908, -0.2727, -0.2543, -0.2357, -0.2169, -0.1979, -0.1787, -0.1593, -0.1398, -0.1202, -0.1005, -0.0807, -0.0608, -0.0409, -0.0210, -0.0010, 0.0189, 0.0389, 0.0588, 0.0786, 0.0984, 0.1182, 0.1378, 0.1573, 0.1767, 0.1959, 0.2149, 0.2338, 0.2524, 0.2708, 0.2889, 0.3067, 0.3242, 0.3412, 0.3579, 0.3742, 0.3899, 0.4051, 0.4197, 0.4337, 0.4469, 0.4594, 0.4710, 0.4817, 0.4915, 0.5002, 0.5080, 0.5148, 0.5209, 0.5261, 0.5306, 0.5344, 0.5377, 0.5405, 0.5429, 0.5449, 0.5467, 0.5480, 0.5493, 0.5505, 0.5514, 0.5524, 0.5531, 0.5538, 0.5544, 0.5549, 0.5554, 0.5558, 0.5562, 0.5566, 0.5569, 0.5572, 0.5575, 0.5577, 0.5580, 0.5582, 0.5585, 0.5587, 0.5589, 0.5589, 0.5592, 0.5593, 0.5594, 0.5596, 0.5598, 0.5599, 0.5601, 0.5602, 0.5603, 0.5603, 0.5605],
     [-0.5787, -0.5786, -0.5786, -0.5785, -0.5784, -0.5782, -0.5781, -0.5781, -0.5779, -0.5778, -0.5776, -0.5775, -0.5774, -0.5772, -0.5770, -0.5769, -0.5767, -0.5765, -0.5762, -0.5760, -0.5758, -0.5755, -0.5752, -0.5749, -0.5745, -0.5743, -0.5739, -0.5735, -0.5730, -0.5726, -0.5721, -0.5716, -0.5709, -0.5703, -0.5696, -0.5688, -0.5679, -0.5670, -0.5658, -0.5646, -0.5631, -0.5614, -0.5595, -0.5572, -0.5544, -0.5511, -0.5472, -0.5423, -0.5367, -0.5300, -0.5220, -0.5127, -0.5021, -0.4901, -0.4767, -0.4619, -0.4460, -0.4288, -0.4105, -0.3912, -0.3709, -0.3498, -0.3278, -0.3052, -0.2820, -0.2581, -0.2338, -0.2091, -0.1839, -0.1584, -0.1327, -0.1066, -0.0805, -0.0542, -0.0278, -0.0013, 0.0251, 0.0516, 0.0779, 0.1041, 0.1301, 0.1559, 0.1814, 0.2066, 0.2313, 0.2557, 0.2796, 0.3029, 0.3256, 0.3476, 0.3688, 0.3891, 0.4085, 0.4269, 0.4442, 0.4602, 0.4752, 0.4887, 0.5008, 0.5116, 0.5209, 0.5290, 0.5360, 0.5418, 0.5466, 0.5506, 0.5538, 0.5566, 0.5591, 0.5609, 0.5628, 0.5641, 0.5655, 0.5666, 0.5676, 0.5685, 0.5693, 0.5701, 0.5706, 0.5713, 0.5719, 0.5722, 0.5727, 0.5731, 0.5735, 0.5739, 0.5744, 0.5746, 0.5750, 0.5753, 0.5754, 0.5758, 0.5760, 0.5762, 0.5764, 0.5766, 0.5768, 0.5769, 0.5770, 0.5773, 0.5774, 0.5775, 0.5776, 0.5778, 0.5778, 0.5781, 0.5781, 0.5783, 0.5784, 0.5785, 0.5786],
     [-0.5608, -0.5607, -0.5606, -0.5603, -0.5603, -0.5602, -0.5600, -0.5599, -0.5598, -0.5596, -0.5594, -0.5593, -0.5590, -0.5589, -0.5587, -0.5585, -0.5583, -0.5580, -0.5578, -0.5574, -0.5572, -0.5567, -0.5565, -0.5561, -0.5555, -0.5552, -0.5547, -0.5541, -0.5534, -0.5527, -0.5518, -0.5509, -0.5498, -0.5485, -0.5471, -0.5453, -0.5433, -0.5410, -0.5382, -0.5350, -0.5312, -0.5268, -0.5216, -0.5157, -0.5090, -0.5012, -0.4926, -0.4829, -0.4723, -0.4608, -0.4484, -0.4352, -0.4213, -0.4067, -0.3916, -0.3759, -0.3597, -0.3430, -0.3260, -0.3085, -0.2908, -0.2727, -0.2543, -0.2357, -0.2169, -0.1979, -0.1787, -0.1593, -0.1398, -0.1202, -0.1005, -0.0807, -0.0608, -0.0409, -0.0210, -0.0010, 0.0189, 0.0389, 0.0588, 0.0786, 0.0984, 0.1182, 0.1378, 0.1573, 0.1767, 0.1959, 0.2149, 0.2338, 0.2524, 0.2708, 0.2889, 0.3067, 0.3242, 0.3412, 0.3579, 0.3742, 0.3899, 0.4051, 0.4197, 0.4337, 0.4469, 0.4594, 0.4710, 0.4817, 0.4915, 0.5002, 0.5080, 0.5148, 0.5209, 0.5261, 0.5306, 0.5344, 0.5377, 0.5405, 0.5429, 0.5449, 0.5467, 0.5480, 0.5493, 0.5505, 0.5514, 0.5524, 0.5531, 0.5538, 0.5544, 0.5549, 0.5554, 0.5558, 0.5562, 0.5566, 0.5569, 0.5572, 0.5575, 0.5577, 0.5580, 0.5582, 0.5585, 0.5587, 0.5589, 0.5589, 0.5592, 0.5593, 0.5594, 0.5596, 0.5598, 0.5599, 0.5601, 0.5602, 0.5603, 0.5603, 0.5605],
@@ -91,7 +214,9 @@ stage0_y = listArray ((0,0), (2,1)) [
     [-0.5787, -0.5786, -0.5786, -0.5785, -0.5784, -0.5782, -0.5781, -0.5781, -0.5779, -0.5778, -0.5776, -0.5775, -0.5774, -0.5772, -0.5770, -0.5769, -0.5767, -0.5765, -0.5762, -0.5760, -0.5758, -0.5755, -0.5752, -0.5749, -0.5745, -0.5743, -0.5739, -0.5735, -0.5730, -0.5726, -0.5721, -0.5716, -0.5709, -0.5703, -0.5696, -0.5688, -0.5679, -0.5670, -0.5658, -0.5646, -0.5631, -0.5614, -0.5595, -0.5572, -0.5544, -0.5511, -0.5472, -0.5423, -0.5367, -0.5300, -0.5220, -0.5127, -0.5021, -0.4901, -0.4767, -0.4619, -0.4460, -0.4288, -0.4105, -0.3912, -0.3709, -0.3498, -0.3278, -0.3052, -0.2820, -0.2581, -0.2338, -0.2091, -0.1839, -0.1584, -0.1327, -0.1066, -0.0805, -0.0542, -0.0278, -0.0013, 0.0251, 0.0516, 0.0779, 0.1041, 0.1301, 0.1559, 0.1814, 0.2066, 0.2313, 0.2557, 0.2796, 0.3029, 0.3256, 0.3476, 0.3688, 0.3891, 0.4085, 0.4269, 0.4442, 0.4602, 0.4752, 0.4887, 0.5008, 0.5116, 0.5209, 0.5290, 0.5360, 0.5418, 0.5466, 0.5506, 0.5538, 0.5566, 0.5591, 0.5609, 0.5628, 0.5641, 0.5655, 0.5666, 0.5676, 0.5685, 0.5693, 0.5701, 0.5706, 0.5713, 0.5719, 0.5722, 0.5727, 0.5731, 0.5735, 0.5739, 0.5744, 0.5746, 0.5750, 0.5753, 0.5754, 0.5758, 0.5760, 0.5762, 0.5764, 0.5766, 0.5768, 0.5769, 0.5770, 0.5773, 0.5774, 0.5775, 0.5776, 0.5778, 0.5778, 0.5781, 0.5781, 0.5783, 0.5784, 0.5785, 0.5786]
     ]
 
-stage0_poles = listArray ((0,0,0,0), (2,1,1,2)) [
+-- This is our table of pole/fract values, from which the `usrAmiInit' and `usrAmiGetWave'
+-- functions construct their transfer functions and/or filter tap weights.
+stage0_poles = listArray ((0, 0, 0, 0), (numProc - 1, numBW - 1, numDC - 1, numMode - 1)) [
     [(-3.182655556097018e+011, 0.000000000000000e+000), (-5.046533426015712e+010, 1.413887041109704e+010), (-5.046533426015712e+010, -1.413887041109704e+010)],
     [(-3.540876545646527e+011,0.000000000000000e+000),(-5.651503542953249e+010,0.000000000000000e+000),(-1.308552904343164e+010,0.000000000000000e+000)],
     [(-3.357356822290575e+011,0.000000000000000e+000),(-4.831847677429995e+010,0.000000000000000e+000),(-9.862099674332804e+009,0.000000000000000e+000)],
@@ -130,7 +255,7 @@ stage0_poles = listArray ((0,0,0,0), (2,1,1,2)) [
     [(-8.411670742311702e+011,0.000000000000000e+000),(-2.330808165363364e+010,0.000000000000000e+000),(-6.028928448749581e+009,0.000000000000000e+000)]
   ]
 
-stage0_fract = listArray ((0,0,0,0), (2,1,1,2)) [
+stage0_fract = listArray ((0, 0, 0, 0), (numProc - 1, numBW - 1, numDC - 1, numMode - 1)) [
     [(-6.301756318799160e-001,0.000000000000000e+000),(8.144884180098692e-001,2.136797592802684e+000),(8.144884180098692e-001,-2.136797592802684e+000)],
     [(-5.446880187259362e-001,0.000000000000000e+000),(2.507386946323693e+000,0.000000000000000e+000),(-9.639124189729575e-001,0.000000000000000e+000)],
     [(-5.598541292063080e-001,0.000000000000000e+000),(2.958225791139072e+000,0.000000000000000e+000),(-1.399503815321885e+000,0.000000000000000e+000)],

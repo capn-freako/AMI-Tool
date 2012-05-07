@@ -23,24 +23,6 @@ foreign export ccall amiInit :: Ptr CDouble -> CInt -> CInt -> CDouble -> CDoubl
 foreign export ccall amiClose :: StablePtr AmiModel -> IO Int
 foreign export ccall amiGetWave :: Ptr CDouble -> CInt -> Ptr CDouble -> Ptr CString -> StablePtr AmiModel -> IO Int
 
-{- This defines the structure of `global' static data we need to preserve,
-in between calls to `amiInit' and `amiClose'.
-
-We'll allocate space for this structure, during initialization (i.e. - while
-we're in `amiInit'), and send a pointer to that space back to the calling
-program, via the `ami_memory_handle' argument. The calling program will store
-that pointer and send it back to us, when it calls `amiClose', so that we may
-free the space, only after the World is completely finished with us.
-
-In this way, we avoid a global pointer within our own name space, and remain
-reusable.
--}
-data AmiModel = AmiModel {
-      paramsOut :: StablePtr CString
-    , msgPtr    :: StablePtr CString
-    , amiTree   :: StablePtr AmiToken
-    }
-
 -- Note) Typically, the 3 `amiXxx' functions, below, are called by the
 --       equivalent functions from `ami_model.c', which have the standard
 --       AMI function names (i.e. - `AMI_Init', `AMI_GetWave', and `AMI_Close')
@@ -61,30 +43,15 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
                             return []
                         else
                             peekArray (fromIntegral row_size) impulse_matrix
-        -- AMI parameter parsing
-        amiParams    <- peekCString ami_parameters_in
-        (amiTree, msg) <- case parse amiToken "ami_parameters_in" amiParams of
-                            Left e  -> do msg' <- newCString $ "Error parsing input: " ++ show e
-                                          return (("ParseError", Tokens []), msg')
-                            Right r -> do msg' <- newCString "AMI parameters parsed successfully." 
-                                          return (r, msg')
-        -- model specific channel convolution
-        pokeArray impulse_matrix (map realToFrac $
-            usrAmiInit amiTree (realToFrac sample_interval) (map realToFrac impulse))
 
-        -- static memory allocation
-        tmpMsgPtr    <- newStablePtr msg -- Protecting `msg' from the garbage collector.
-        poke msgHndl msg                 -- Note that we poke `msg', not `tmpMsgPtr', into `msgHndl'.
-        prms         <- newCString $ "(" ++ fst amiTree ++ (filter (/= '\n') $ show (snd amiTree)) ++ ")"
-        tmpParamsOut <- newStablePtr prms
-        poke ami_parameters_out prms
-        tmpAmiTree   <- newStablePtr amiTree
-        self         <- newStablePtr AmiModel {            -- Storing pointers to these protected entities,
-                                  paramsOut = tmpParamsOut -- so that we'll be able to free the space,
-                                , msgPtr    = tmpMsgPtr    -- when we're closed.
-                                , amiTree   = tmpAmiTree
-                               }
+        -- Call model specific initialization function.
+        (newImpulse, self) <- usrAmiInit ami_parameters_in (realToFrac sample_interval) (map realToFrac impulse)
         poke ami_memory_handle self
+        amiModel <- deRefStablePtr self
+        poke msgHndl $ msgPtr amiModel
+--        if (getAmiExp (amiParams amiModel) [(rootName amiModel), "InitReturnsImpulse"] == Just True) then
+        pokeArray impulse_matrix $ map realToFrac newImpulse
+        poke ami_parameters_out $ paramsOut amiModel
 
         return 1
 
@@ -99,9 +66,9 @@ amiGetWave wave_in wave_size clock_times ami_parameters_out ami_memory_ptr
                             peekArray (fromIntegral wave_size) wave_in
 
         -- model specific filtering
-        self       <- deRefStablePtr ami_memory_ptr -- The accessor, `amiTree' below, takes the structure itself,
-        amiParams  <- deRefStablePtr $ amiTree self -- not a pointer to it.
-        y          <- return $ usrAmiGetWave amiParams (map realToFrac theWave)
+        self       <- deRefStablePtr ami_memory_ptr -- The accessor, `amiParams' below, takes the structure itself,
+        amiParams  <- deRefStablePtr $ amiParams self -- not a pointer to it.
+        y          <- usrAmiGetWave ami_memory_ptr amiParams (map realToFrac theWave)
         pokeArray wave_in (map realToFrac y)
 
         return 1
@@ -112,8 +79,8 @@ amiGetWave wave_in wave_size clock_times ami_parameters_out ami_memory_ptr
 amiClose :: StablePtr AmiModel -> IO Int
 amiClose selfPtr = do
     self <- deRefStablePtr selfPtr -- The accessors, `paramsOut' and `msgPtr', take the structure itself,
-    freeStablePtr (paramsOut self) -- not a pointer to it, as arguments.
-    freeStablePtr (msgPtr self)
+--    freeStablePtr (paramsOut self) -- not a pointer to it, as arguments.
+--    freeStablePtr (msgPtr self)
     freeStablePtr selfPtr
     return 1
 

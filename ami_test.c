@@ -17,6 +17,7 @@
 #define SAMPS_PER_BIT (SMPL_RATE / BIT_RATE)
 #define PRBS_LEN     127
 #define PRBS_TAPS    0x10010000 // `[7, 4]' gold code feedback pattern
+#define DO_IMPULSE   0
 
 int bitcount (unsigned x) {
     int b;
@@ -123,8 +124,8 @@ int main(int argc, char **argv) {
     if (argc > 2)
         sscanf (argv[2], "%d", &num_bits);
 
-//    lib_handle = dlopen("libami.so", RTLD_LAZY);
-    lib_handle = dlopen("arria5_rx.linux.so", RTLD_LAZY);
+    lib_handle = dlopen("libami.so", RTLD_LAZY);
+//    lib_handle = dlopen("arria5_rx.linux.so", RTLD_LAZY);
     if (!lib_handle) {
         fprintf(stderr, "%s\n", dlerror());
         exit(1);
@@ -172,11 +173,13 @@ int main(int argc, char **argv) {
     else
         printf ("No parameters from AMI_Init.\n");
 
-    printf ("Impulse Response:\n");
-    for (i=0; i<VEC_SIZE; i++) {
-        printf ("%6.3e, %6.3e\n", i * sample_interval, impulse[i]);
+    if (DO_IMPULSE) {
+	printf ("Impulse Response:\n");
+	for (i=0; i<VEC_SIZE; i++) {
+	    printf ("%6.3e, %6.3e\n", i * sample_interval, impulse[i]);
+	}
+	printf ("\n");
     }
-    printf ("\n");
 
     if (num_bits) {
         printf ("GetWave Output:\n");

@@ -1,8 +1,17 @@
-module AMIParse where
+module AMIParse (
+    AmiToken
+  , AmiExp (Vals, Tokens)
+  , showTree
+  , amiGetInt
+  , getAmiExp
+  , amiToken
+  , module Text.ParserCombinators.Parsec
+) where
 
 import Text.ParserCombinators.Parsec
 import Data.List
 
+-- New data type and its helper functions
 type AmiToken = (String, AmiExp)
 
 data AmiExp   = Vals [String]
@@ -69,6 +78,7 @@ quotedVal = do
     char '"'
     return $ '"' : res ++ "\""
 
+-- getter function for callers to use
 getAmiExp :: AmiToken -> [String] -> Maybe AmiExp
 getAmiExp _ [] = Nothing
 getAmiExp amiToken (l:ls)
