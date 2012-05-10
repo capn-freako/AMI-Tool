@@ -126,8 +126,12 @@ usrAmiInit ami_parameters_in sample_interval impulse = do
               putStr "Fracts: "
               putStrLn $ show fracts
               taps         <- return [0.0]
+              {- Python code:
+              B  = map (lambda r_, p_: [0, r_ * (1 - exp(p_ * T)) / (-p_)], r, p)
+              A  = map (lambda p_    : [1, -exp(p_ * T)],                   p) -}
               filterStates <- return $ map (uncurry (uncurry FilterState))
-                                           [(([1, realPart (-p)], [0, realPart (-f * p)]), taps)
+                                           [(([1, realPart (-p)], [0, realPart (f * (1 - p))]), taps)
+--                                           [(([1, realPart (-p)], [0, realPart (-f * p)]), taps)
 --                                           [(([1 :+ 0, (-p)], [0 :+ 0, (-f * p)]), taps)
                                              | (f, p) <- zip fracts poles]
               -- Set up static storage pointers for placement in the model memory structure.
