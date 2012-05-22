@@ -28,7 +28,7 @@ if __name__ == '__main__':
     print "*,stop_time,", stop_time
     print "Time,wave_in"
     print "0.0, 0.0"
-    print sample_interval, ", 1.0"
+    print sample_interval, ", 0.1"
     for i in range(2, n):
 #                print i * 25.0e-12, ",", random.randrange(2)
         print i * sample_interval, ",", "0.0"

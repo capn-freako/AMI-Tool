@@ -6,7 +6,7 @@ Title Electrical Path Impulse Response,,,
 *,register_length,7,
 *,sample_interval,2.50E-011,
 *,bit_time,2.00E-010,
-*,stop_time,3.00E-009,
+*,stop_time,2.00E-008,
 *,Model specific parameters extracted from IBIS_AMI_Tx.ami by ami2csv,,
 *,AMI_parameters_in,Start,
 *,testAMI,,
@@ -16,11 +16,11 @@ Title Electrical Path Impulse Response,,,
 ,,Process,0
 ,,Init_Returns_Impulse,TRUE
 ,,GetWave_Exists,TRUE
-,,Use_Init_Output,TRUE
+,,Use_Init_Output,FALSE
 *,AMI_parameters_in,End,
 Time,impulse(primary),,
 0.00E+000,0.00E+000,,
-2.50E-011,1,,
+2.50E-011,0.10E+000,,
 5.00E-011,0.00E+000,,
 7.50E-011,0.00E+000,,
 1.00E-010,0.00E+000,,

@@ -153,7 +153,6 @@ usrAmiInit ami_parameters_in sample_interval impulse = do
                   otherwise -> return (self, filtOut)
                                 where filtOut = foldl add (take (length impulse) (repeat 0.0)) $
                                                       map (\fs -> runAuto (filterAuto convT fs)
---                                                                          (map (:+ 0) impulse))
                                                                           impulse)
                                                           filterStates
     return (newImpulse, self)
@@ -182,7 +181,7 @@ choose (x:xs) n
     | otherwise         = map (x:) (choose xs (n - 1)) ++ choose xs n
 
 -- Our, model specific implementation of `AMI_GetWave':
-usrAmiGetWave :: StablePtr AmiModel -> AmiToken -> [Double] -> IO [Double]
+usrAmiGetWave :: (StablePtr AmiModel) -> AmiToken -> [Double] -> IO [Double]
 usrAmiGetWave self amiTree wave =
     case do process   <- (getAmiParam amiTree ["Process"] >>= amiGetInt)
             dcGain <- (getAmiParam amiTree ["Dcgain"]  >>= amiGetInt)
@@ -190,9 +189,14 @@ usrAmiGetWave self amiTree wave =
     of
         Nothing             -> return []
         Just (process, dcGain) -> do
---            filtOut <- myFilter self wave
-            filtOut <- return wave
-            return $ map (compress (zip (stage0_x ! (process, dcGain)) (stage0_y ! (process, dcGain)))) filtOut
+            theModel <- deRefStablePtr self
+            theState <- deRefStablePtr $ filterState theModel
+            let filtOut = foldl add (take (length wave) (repeat 0.0)) $
+                                map (\fs -> runAuto (filterAuto convT fs)
+                                                    wave)
+                                    theState in
+                return $ map (compress (zip (stage0_x ! (process, dcGain)) (stage0_y ! (process, dcGain))))
+                             filtOut
 
 compress :: [(Double, Double)] -> Double -> Double
 compress tbl x = snd low + ((snd high - snd low) * (x - fst low) / (fst high - fst low)) -- linear interp.
