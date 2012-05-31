@@ -57,8 +57,9 @@ data AmiModel = AmiModel {
     , paramsOut   :: CString
     , msgPtr      :: CString
     , amiParams   :: StablePtr AmiToken
---    , filterState :: StablePtr [FilterState (Complex Double)]
     , filterState :: StablePtr [FilterState Double]
+    , proc        :: Int
+    , gain        :: Int
     }
 
 -- Our model specific implementation of `AMI_Init':
@@ -95,44 +96,24 @@ usrAmiInit ami_parameters_in sample_interval impulse = do
                                         , amiParams   = tmpAmiParams
                                         , filterState = tmpFilterState
                                         , rootName    = myRootName
+                                        , proc        = 0
+                                        , gain        = 0
                                        }
               self           <- newStablePtr myAmiModel
               return (self, [])
           -- Params. were fetched successfully.
           Just (process, bandwidth, dcGain, mode) -> do
-              putStr "process: "
-              putStrLn $ show process
-              putStr "bandwidth: "
-              putStrLn $ show bandwidth
-              putStr "dcGain: "
-              putStrLn $ show dcGain
-              putStr "mode: "
-              putStrLn $ show mode
               prms         <- newCString $ "(" ++ fst amiTree ++ (filter (/= '\n') $ show (snd amiTree))
                                                ++ ")"
               -- Convert the poles from S to Z domain.
               poles        <- return $ map (exp . ((sample_interval :+ 0) *) . combComp)
                                            (stage0_poles ! (process, bandwidth, dcGain, mode))
-{-              poles <- let reals  = fst seps
-                           imags  = snd seps
-                           imags' = map (sample_interval *) imags
-                           seps   = unzip (stage0_poles ! (process, bandwidth, dcGain, mode))
-                       in return $ map (exp . combComp) (zip reals imags') -}
               -- Use the fracts, as they are.
               fracts       <- return $ map combComp
                                            (stage0_fract ! (process, bandwidth, dcGain, mode))
-              putStr "Poles: "
-              putStrLn $ show poles
-              putStr "Fracts: "
-              putStrLn $ show fracts
               taps         <- return [0.0]
-              {- Python code:
-              B  = map (lambda r_, p_: [0, r_ * (1 - exp(p_ * T)) / (-p_)], r, p)
-              A  = map (lambda p_    : [1, -exp(p_ * T)],                   p) -}
               filterStates <- return $ map (uncurry (uncurry FilterState))
                                            [(([1, realPart (-p)], [0, realPart (f * (1 - p))]), taps)
---                                           [(([1, realPart (-p)], [0, realPart (-f * p)]), taps)
---                                           [(([1 :+ 0, (-p)], [0 :+ 0, (-f * p)]), taps)
                                              | (f, p) <- zip fracts poles]
               -- Set up static storage pointers for placement in the model memory structure.
               tmpParamsOut   <- newStablePtr prms -- so that we'll be able to free the space,
@@ -146,6 +127,8 @@ usrAmiInit ami_parameters_in sample_interval impulse = do
                                         , amiParams   = tmpAmiParams
                                         , filterState = tmpFilterState
                                         , rootName    = myRootName
+                                        , proc        = process
+                                        , gain        = dcGain
                                        }
               self           <- newStablePtr myAmiModel
               case mode of
@@ -182,21 +165,17 @@ choose (x:xs) n
 
 -- Our, model specific implementation of `AMI_GetWave':
 usrAmiGetWave :: (StablePtr AmiModel) -> AmiToken -> [Double] -> IO [Double]
-usrAmiGetWave self amiTree wave =
-    case do process   <- (getAmiParam amiTree ["Process"] >>= amiGetInt)
-            dcGain <- (getAmiParam amiTree ["Dcgain"]  >>= amiGetInt)
-            return (process, dcGain)
-    of
-        Nothing             -> return []
-        Just (process, dcGain) -> do
-            theModel <- deRefStablePtr self
-            theState <- deRefStablePtr $ filterState theModel
-            let filtOut = foldl add (take (length wave) (repeat 0.0)) $
-                                map (\fs -> runAuto (filterAuto convT fs)
-                                                    wave)
-                                    theState in
-                return $ map (compress (zip (stage0_x ! (process, dcGain)) (stage0_y ! (process, dcGain))))
-                             filtOut
+usrAmiGetWave self amiTree wave = do
+    theModel <- deRefStablePtr self
+    theState <- deRefStablePtr $ filterState theModel
+    let filtOut = foldl add (take (length wave) (repeat 0.0)) $
+                        map (\fs -> runAuto (filterAuto convT fs)
+                                            wave)
+                            theState
+        process = proc theModel
+        dcGain  = gain theModel in
+        return $ map (compress (zip (stage0_x ! (process, dcGain)) (stage0_y ! (process, dcGain))))
+                     filtOut
 
 compress :: [(Double, Double)] -> Double -> Double
 compress tbl x = snd low + ((snd high - snd low) * (x - fst low) / (fst high - fst low)) -- linear interp.
