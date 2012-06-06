@@ -49,7 +49,6 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
         poke ami_memory_handle self
         amiModel <- deRefStablePtr self
         poke msgHndl $ msgPtr amiModel
---        if (getAmiExp (amiParams amiModel) [(rootName amiModel), "InitReturnsImpulse"] == Just True) then
         pokeArray impulse_matrix $ map realToFrac newImpulse
         poke ami_parameters_out $ paramsOut amiModel
 
@@ -78,9 +77,8 @@ amiGetWave wave_in wave_size clock_times ami_parameters_out ami_memory_ptr
 -- allocated, during initialization.
 amiClose :: StablePtr AmiModel -> IO Int
 amiClose selfPtr = do
-    self <- deRefStablePtr selfPtr -- The accessors, `paramsOut' and `msgPtr', take the structure itself,
---    freeStablePtr (paramsOut self) -- not a pointer to it, as arguments.
---    freeStablePtr (msgPtr self)
+    self <- deRefStablePtr selfPtr -- The accessors for type `AmiModel' take the structure itself,
+    usrAmiClose self               -- not a pointer to it, as arguments.
     freeStablePtr selfPtr
     return 1
 
