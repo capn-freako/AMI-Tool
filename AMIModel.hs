@@ -39,7 +39,7 @@ amiInit impulse_matrix row_size aggressors sample_interval bit_time
         ami_parameters_in ami_parameters_out ami_memory_handle msgHndl
     = do
         -- C to Haskell variable conversion
-        impulse      <- if (impulse_matrix == nullPtr) then
+        impulse      <- if impulse_matrix == nullPtr then
                             return []
                         else
                             peekArray (fromIntegral row_size) impulse_matrix
@@ -59,7 +59,7 @@ amiGetWave :: Ptr CDouble -> CInt -> Ptr CDouble -> Ptr CString -> StablePtr Ami
 amiGetWave wave_in wave_size clock_times ami_parameters_out ami_memory_ptr
     = do
         -- C to Haskell variable conversion
-        theWave      <- if (wave_in == nullPtr) then
+        theWave      <- if wave_in == nullPtr then
                             return []
                         else
                             peekArray (fromIntegral wave_size) wave_in

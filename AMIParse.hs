@@ -20,11 +20,11 @@ instance Show AmiExp where
     show = showTree ""
 
 showTree :: String -> AmiExp -> String
-showTree _ (Vals strs)        = " " ++ (intercalate " " strs) ++ "\n"
-showTree indent (Tokens toks) = "\n" ++ (concat $ map (showToken (' ' : indent)) toks)
+showTree _ (Vals strs)        = " " ++ unwords strs ++ "\n"
+showTree indent (Tokens toks) = '\n' : concatMap (showToken (' ' : indent)) toks
 
 showToken :: String -> AmiToken -> String
-showToken indent tok = indent ++ "(" ++ (fst tok) ++ (showTree indent (snd tok)) ++ indent ++ ")\n"
+showToken indent tok = indent ++ "(" ++ fst tok ++ showTree indent (snd tok) ++ indent ++ ")\n"
 
 amiGetInt :: AmiExp -> Maybe Int
 amiGetInt (Tokens _)    = Nothing
