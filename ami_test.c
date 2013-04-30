@@ -6,8 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dlfcn.h>
-//#include "HsFFI.h"
-//#include "ami_model.h"
 
 #define DEF_AMI_FILE "test.ami"
 #define VEC_SIZE     128

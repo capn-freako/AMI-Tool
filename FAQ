@@ -1,0 +1,27 @@
+This is the FAQ for the Haskell `AMI-Tool' package.
+
+Q) Why am I getting this error, when building?:
+/usr/bin/ld: /usr/lib/ghc-7.4.2/libHSrts.a(RtsAPI.o): relocation R_X86_64_32S against `ghczmprim_GHCziTypes_Czh_con_info' can not be used when making a shared object; recompile with -fPIC
+
+A) I don't know, but was able to fix it by creating a symbolic link:
+/usr/lib/ghc-7.4.2/libHSrts.so -> libHSrts-ghc7.4.2.so*
+
+For more details, see this Google Groups thread:
+https://groups.google.com/forum/?hl=en&fromgroups=#!topic/haskell-cafe/solDzUakk6I
+
+Q) Okay, I've made it successfully through my first build, but your proposed quick test is failing:
+
+dbanas@dbanas-lap:~/prj/AMI-Tool$ ./ami_test test.ami
+libami.so: cannot open shared object file: No such file or directory
+
+What do I do?
+
+A) You need to prefix your command with a custom environment variable definition:
+
+dbanas@dbanas-lap:~/prj/AMI-Tool$ LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./" ./ami_test test.ami
+Received this message from AMI_Init: AMI parameters parsed successfully.
+Parameters from AMI_Init:
+
+The linker doesn't search the local directory for shared objects, by default, as a security precaution.
+(You can change this, permanently, but it's not advised.)
+

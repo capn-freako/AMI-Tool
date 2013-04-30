@@ -1,0 +1,11 @@
+1) ami_test is reporting successful parameter parsing, but not reporting any parameters!:
+
+dbanas@dbanas-lap:~/prj/AMI-Tool$ LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./" ./ami_test test.ami
+Received this message from AMI_Init: AMI parameters parsed successfully.
+Parameters from AMI_Init:
+
+dbanas@dbanas-lap:~/prj/AMI-Tool$
+
+Status) current
+
+

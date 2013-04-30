@@ -1,10 +1,5 @@
 module Filter where
 
-import Control.Arrow
-import Control.Arrow.Operations
-import Control.Arrow.Transformer
-import Control.Arrow.Transformer.Stream
-
 -- FILTER STATE/TYPE DEFINITIONS
 -- tap weights, `as' and `bs', are being made part of the filter state, in
 -- order to accomodate adaptive filters (i.e. - DFEs).

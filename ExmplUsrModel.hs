@@ -5,12 +5,9 @@ module ExmplUsrModel (
   , AmiModel(..)
 ) where
 
-import DSP.Filter.FIR.FIR
-import DSP.Filter.FIR.Taps
 import Data.Array
 import Data.Complex
 import Data.List
-import Numeric.Transform.Fourier.FFT
 import Foreign
 import Foreign.Ptr
 import Foreign.StablePtr

@@ -3,13 +3,14 @@ CFLAGS += -I/usr/lib/ghc-7.0.3/include/ -g -fPIC
 
 HC      = ghc
 HC_OPTS = -cpp -O3 $(EXTRA_HC_OPTS)
-EXTRA_HC_OPTS = -package parsec -package dsp -package arrows -dynamic -fPIC
-HC_LOPTS = -shared -dynamic -package parsec -package dsp -package arrows -lHSrts -lm -lffi -lrt
+EXTRA_HC_OPTS = -package parsec -dynamic -fPIC
+HC_LSUFFIX = -ghc7.4.2
+HC_LOPTS = -shared -dynamic -package parsec -lHSrts -lm -lffi -lrt
 
 HSRCS = AMIParse.hs AMIModel.hs ExmplUsrModel.hs Filter.hs
 CSRCS = ami_model.c ami_test.c
 SRCS  = $(HSRCS) $(CSRCS)
-OBJS = AMIParse.o  AMIModel.o  ami_model.o AMIModel_stub.o ExmplUsrModel.o Filter.o
+OBJS = AMIParse.o  AMIModel.o  ami_model.o ExmplUsrModel.o Filter.o
 SO_FILE = libami.so
 
 PARSE_CHK_EXEC = ./ami_test
@@ -23,7 +24,7 @@ TEST_OPTS = -i $(INIT_CFG) -f $(SO_FILE) -c
 
 all: $(PARSE_CHK_EXEC) $(SO_FILE)
 
-$(PARSE_CHK_EXEC): $(PARSE_CHK_EXEC).o 
+$(PARSE_CHK_EXEC): $(PARSE_CHK_EXEC).c
 	$(CC) -rdynamic -o $@ $^ -ldl
 
 $(SO_FILE) : $(OBJS)
@@ -38,7 +39,7 @@ rebuild:
 	$(MAKE) all
 
 clean:
-	rm -f *.hi *.o *.out $(PARSE_CHK_EXEC) $(SO_FILE)
+	rm -f *_stub.h *.hi *.o *.out $(PARSE_CHK_EXEC) $(SO_FILE)
 
 parse_chk: $(PARSE_CHK_EXEC) $(SO_FILE)
 	$(PARSE_CHK_EXEC) $(SO_FILE) $(PARSE_CHK_INPUT)
@@ -66,7 +67,10 @@ test: $(SO_FILE)
 	$(HC) -c $< $(HC_OPTS)
 
 # Individual cases
-AMIModel_stub.o: AMIModel.hs
+AMIModel_stub.h: AMIModel.o
+	@:
+
+ami_model.o: ami_model.c AMIModel_stub.h
 	$(HC) -c $< $(HC_OPTS)
 
 # DO NOT DELETE: Beginning of Haskell dependencies
