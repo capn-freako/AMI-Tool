@@ -7,6 +7,7 @@
 #include <string.h>
 #include <dlfcn.h>
 
+#define DEF_DLL_FILE "libami.so"
 #define DEF_AMI_FILE "test.ami"
 #define VEC_SIZE     128
 #define MAX_LINE_LEN 256
@@ -60,6 +61,7 @@ int main(int argc, char **argv) {
     long (*AMI_Close)(
         void *      AMI_memory
     );
+    char        dll_filename[256]  = DEF_DLL_FILE;
     char        ami_filename[256]  = DEF_AMI_FILE;
     FILE *      ami_file           = NULL;
     char        line[MAX_LINE_LEN] = "\n";
@@ -109,7 +111,10 @@ int main(int argc, char **argv) {
     void *      AMI_memory         = mem_ptr;
 
     if (argc > 1)
-        strcpy (ami_filename, argv[1]);
+        strcpy (dll_filename, argv[1]);
+
+    if (argc > 2)
+        strcpy (ami_filename, argv[2]);
     ami_file = fopen (ami_filename, "rt");
     if (!ami_file) {
         fprintf (stderr, "Couldn't open AMI file, '%s'\n", ami_filename);
@@ -119,11 +124,10 @@ int main(int argc, char **argv) {
         strcat (ami_str, line);
     }
 
-    if (argc > 2)
-        sscanf (argv[2], "%d", &num_bits);
+    if (argc > 3)
+        sscanf (argv[3], "%d", &num_bits);
 
-    lib_handle = dlopen("libami.so", RTLD_LAZY);
-//    lib_handle = dlopen("arria5_rx.linux.so", RTLD_LAZY);
+    lib_handle = dlopen(dll_filename, RTLD_LAZY);
     if (!lib_handle) {
         fprintf(stderr, "%s\n", dlerror());
         exit(1);

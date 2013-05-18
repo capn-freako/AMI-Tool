@@ -16,12 +16,12 @@ int hs_started = 0;
 
 void HsStart()
 {
-    int argc = 1;
+    int argc = 5;
     char* argv[] = {"ghcDll",
-/*                    "+RTS",
+                    "+RTS",
                     "-hc",
                     "-p",
-                    "-K100M",*/
+                    "-K100M",
                     NULL}; // argv must end with NULL
 
     // Initialize Haskell runtime

@@ -82,6 +82,8 @@ usrAmiInit ami_parameters_in sample_interval impulse = do
          of
           -- There was an error fetching the params., above.
           Nothing -> do
+              putStrLn "Error fetching parameters!"
+              putStrLn $ show amiTree
               tmpParamsOut   <- newCString ""
               tmpAmiParams   <- newStablePtr amiTree
               let theFilterState = [FilterState [] [] []]

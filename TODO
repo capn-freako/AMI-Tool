@@ -1,2 +1,3 @@
 - Remove hard-wired *.so file naming from `ami_test.c'.
-
+- Add validation of first level section names in *.ami files.
+  (i.e. - "Description", "Reserved_Parameters", and "Model_Specific" with no repeats)

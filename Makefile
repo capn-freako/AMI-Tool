@@ -1,11 +1,11 @@
 CC = gcc
-CFLAGS += -I/usr/lib/ghc-7.0.3/include/ -g -fPIC
+CFLAGS += -I/usr/lib/ghc-7.4.2/include/ -g -fPIC
 
-HC      = ghc
+HC      = ghc -B/usr/lib/ghc-7.4.2
 HC_OPTS = -cpp -O3 $(EXTRA_HC_OPTS)
 EXTRA_HC_OPTS = -package parsec -dynamic -fPIC
 HC_LSUFFIX = -ghc7.4.2
-HC_LOPTS = -shared -dynamic -package parsec -lHSrts -lm -lffi -lrt
+HC_LOPTS = -rtsopts -shared -dynamic -package parsec -lHSrts -lm -lffi -lrt
 
 HSRCS = AMIParse.hs AMIModel.hs ExmplUsrModel.hs Filter.hs
 CSRCS = ami_model.c ami_test.c
