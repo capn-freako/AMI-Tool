@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Filter where
 
 -- FILTER STATE/TYPE DEFINITIONS
@@ -23,9 +25,11 @@ convT (x, s) =
     in (y, s')
 
 -- FILTER APPLICATION
+{-# INLINE runFilter #-}
 runFilter :: Kernel a -> FilterState a -> [a] -> [a]
-runFilter f s0 [] = []
-runFilter f s0 (x:xs) = let
-    (y, s') = f (x, s0)
-    in (y : runFilter f s' xs)
+runFilter f = go where
+    go !s0 [] = []
+    go !s0 (x:xs) = let
+        (!y, !s') = f (x, s0)
+        in (y : runFilter f s' xs)
 

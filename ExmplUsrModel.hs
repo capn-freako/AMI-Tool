@@ -165,8 +165,10 @@ choose (x:xs) n
     | otherwise         = map (x:) (choose xs (n - 1)) ++ choose xs n
 
 -- Our, model specific implementation of `AMI_GetWave':
-usrAmiGetWave :: StablePtr AmiModel -> AmiToken -> [Double] -> IO [Double]
-usrAmiGetWave self amiTree wave = do
+--usrAmiGetWave :: StablePtr AmiModel -> AmiToken -> [Double] -> IO [Double]
+--usrAmiGetWave self amiTree wave = do
+usrAmiGetWave :: StablePtr AmiModel -> [Double] -> IO [Double]
+usrAmiGetWave self wave = do
     theModel <- deRefStablePtr self
     theState <- deRefStablePtr $ filterState theModel
     theFilter <- deRefStablePtr $ ctle theModel

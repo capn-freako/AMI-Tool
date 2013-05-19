@@ -1,29 +1,195 @@
-	Sat May 18 16:45 2013 Time and Allocation Profiling Report  (Final)
+	Sun May 19 13:50 2013 Time and Allocation Profiling Report  (Final)
 
-	   test +RTS -p -RTS
+	   test +RTS -p -RTS 10000
 
-	total time  =        0.00 secs   (3 ticks @ 1000 us, 1 processor)
-	total alloc =   3,297,136 bytes  (excludes profiling overheads)
+	total time  =        9.51 secs   (9508 ticks @ 1000 us, 1 processor)
+	total alloc = 8,837,991,248 bytes  (excludes profiling overheads)
 
-COST CENTRE MODULE           %time %alloc
+COST CENTRE             MODULE        %time %alloc
 
-CAF         Main             100.0   96.5
-CAF         GHC.IO.Handle.FD   0.0    1.1
-CAF         GHC.Float          0.0    2.1
+rand                    Main           39.4   31.2
+convT.wk                Filter         22.3   18.6
+convT.y                 Filter         19.0   21.4
+usrAmiGetWave.filtOut.\ ExmplUsrModel   4.7    6.6
+usrAmiInit.theCtle      ExmplUsrModel   3.7    4.1
+add                     ExmplUsrModel   3.0    4.5
+convT                   Filter          3.0    9.0
+convT.s'                Filter          1.3    1.4
+usrAmiGetWave           ExmplUsrModel   0.4    1.3
 
 
-                                                                 individual     inherited
-COST CENTRE MODULE                             no.     entries  %time %alloc   %time %alloc
+                                                                       individual     inherited
+COST CENTRE                  MODULE                  no.     entries  %time %alloc   %time %alloc
 
-MAIN        MAIN                                79           0    0.0    0.0   100.0  100.0
- CAF        Main                               157           0  100.0   96.5   100.0   96.5
- CAF        ExmplUsrModel                      156           0    0.0    0.1     0.0    0.1
- CAF        AMIParse                           155           0    0.0    0.0     0.0    0.0
- CAF        GHC.Float                          125           0    0.0    2.1     0.0    2.1
- CAF        GHC.IO.Handle.FD                   123           0    0.0    1.1     0.0    1.1
- CAF        GHC.Conc.Signal                    115           0    0.0    0.0     0.0    0.0
- CAF        GHC.Float.ConversionUtils          113           0    0.0    0.0     0.0    0.0
- CAF        GHC.IO.Encoding                    111           0    0.0    0.1     0.0    0.1
- CAF        Text.Read.Lex                      102           0    0.0    0.1     0.0    0.1
- CAF        GHC.IO.Encoding.Iconv               92           0    0.0    0.0     0.0    0.0
- CAF        GHC.Integer.Logarithms.Internals    86           0    0.0    0.0     0.0    0.0
+MAIN                         MAIN                    155           0    0.0    0.0   100.0  100.0
+ main                        Main                    311           0    0.6    0.8   100.0  100.0
+  usrAmiClose                ExmplUsrModel           417           1    0.0    0.0     0.0    0.0
+   ctle                      ExmplUsrModel           422           1    0.0    0.0     0.0    0.0
+   filterState               ExmplUsrModel           421           1    0.0    0.0     0.0    0.0
+   amiParams                 ExmplUsrModel           420           1    0.0    0.0     0.0    0.0
+   msgPtr                    ExmplUsrModel           419           1    0.0    0.0     0.0    0.0
+   paramsOut                 ExmplUsrModel           418           1    0.0    0.0     0.0    0.0
+  main.\                     Main                    374       10000    0.8    0.7    59.5   67.6
+   usrAmiGetWave             ExmplUsrModel           375       10000    0.4    1.3    58.8   66.9
+    usrAmiGetWave.filtOut    ExmplUsrModel           379       10000    0.0    0.0    58.4   65.6
+     usrAmiGetWave.filtOut.\ ExmplUsrModel           398       30000    4.7    6.6    55.3   61.1
+      usrAmiInit             ExmplUsrModel           403           0    0.2    0.0    50.6   54.5
+       usrAmiInit.theCtle    ExmplUsrModel           404           0    3.7    4.1    50.4   54.5
+        convT                Filter                  405     3810000    3.0    9.0    46.8   50.4
+         convT.s'            Filter                  416     3810000    1.3    1.4     1.3    1.4
+         convT.newTaps       Filter                  415     3810000    0.0    0.0     0.0    0.0
+         convT.wk            Filter                  409     3810000   22.3   18.6    22.3   18.6
+          taps               Filter                  411     3810000    0.0    0.0     0.0    0.0
+          as                 Filter                  410     7620000    0.0    0.0     0.0    0.0
+         convT.y             Filter                  406     3810000   19.0   21.4    20.3   21.4
+          taps               Filter                  408     3810000    0.9    0.0     0.9    0.0
+          bs                 Filter                  407     3810000    0.4    0.0     0.4    0.0
+     add                     ExmplUsrModel           397       30000    3.0    4.5     3.0    4.5
+    ctle                     ExmplUsrModel           378       10000    0.0    0.0     0.0    0.0
+    filterState              ExmplUsrModel           376       10000    0.0    0.0     0.0    0.0
+  main.\                     Main                    367       10000    0.4    0.3    39.8   31.6
+   rand                      Main                    373           0   39.4   31.2    39.4   31.2
+   main.\.\                  Main                    371     1280000    0.0    0.0     0.0    0.0
+  main.num_get_calls         Main                    364           1    0.0    0.0     0.0    0.0
+  doInit                     Main                    313           1    0.0    0.0     0.0    0.0
+   usrAmiInit                ExmplUsrModel           314           1    0.0    0.0     0.0    0.0
+    usrAmiInit.poles         ExmplUsrModel           391           1    0.0    0.0     0.0    0.0
+     combComp                ExmplUsrModel           413           3    0.0    0.0     0.0    0.0
+    usrAmiInit.filterStates  ExmplUsrModel           390           1    0.0    0.0     0.0    0.0
+    usrAmiInit.fracts        ExmplUsrModel           380           1    0.0    0.0     0.0    0.0
+     combComp                ExmplUsrModel           414           3    0.0    0.0     0.0    0.0
+    usrAmiInit.myAmiModel    ExmplUsrModel           377           1    0.0    0.0     0.0    0.0
+    show                     AMIParse                358           0    0.0    0.0     0.0    0.0
+     showTree                AMIParse                359           5    0.0    0.0     0.0    0.0
+      showToken              AMIParse                360           4    0.0    0.0     0.0    0.0
+    amiGetInt                AMIParse                353           4    0.0    0.0     0.0    0.0
+    getAmiParam              ExmplUsrModel           349           4    0.0    0.0     0.0    0.0
+     getAmiExp               AMIParse                350           8    0.0    0.0     0.0    0.0
+    amiToken                 AMIParse                316           0    0.0    0.0     0.0    0.0
+     symbol                  AMIParse                322           0    0.0    0.0     0.0    0.0
+      identifier             AMIParse                328           0    0.0    0.0     0.0    0.0
+       skipJunk              AMIParse                330           0    0.0    0.0     0.0    0.0
+      skipJunk               AMIParse                324           0    0.0    0.0     0.0    0.0
+     skipJunk                AMIParse                318           0    0.0    0.0     0.0    0.0
+      quotedVal              AMIParse                336           0    0.0    0.0     0.0    0.0
+       symbol                AMIParse                340           0    0.0    0.0     0.0    0.0
+        identifier           AMIParse                341           0    0.0    0.0     0.0    0.0
+      symbol                 AMIParse                333           0    0.0    0.0     0.0    0.0
+       identifier            AMIParse                334           0    0.0    0.0     0.0    0.0
+ CAF:main1                   Main                    308           0    0.0    0.0     0.0    0.0
+  main                       Main                    310           1    0.0    0.0     0.0    0.0
+ CAF:main4                   Main                    307           0    0.0    0.0     0.0    0.0
+  main                       Main                    365           0    0.0    0.0     0.0    0.0
+   main.num_get_calls        Main                    366           0    0.0    0.0     0.0    0.0
+ CAF:main8                   Main                    304           0    0.0    0.0     0.0    0.0
+  main                       Main                    368           0    0.0    0.0     0.0    0.0
+   main.\                    Main                    369           0    0.0    0.0     0.0    0.0
+ CAF:rand1                   Main                    302           0    0.0    0.0     0.0    0.0
+  rand                       Main                    372           1    0.0    0.0     0.0    0.0
+ CAF:vect_len                Main                    297           0    0.0    0.0     0.0    0.0
+  vect_len                   Main                    370           1    0.0    0.0     0.0    0.0
+ CAF:the_params              Main                    296           0    0.0    0.0     0.0    0.0
+  the_params                 Main                    312           1    0.0    0.0     0.0    0.0
+ CAF:the_params1             Main                    295           0    0.0    0.0     0.0    0.0
+ CAF:sample_interval         Main                    294           0    0.0    0.0     0.0    0.0
+  sample_interval            Main                    412           1    0.0    0.0     0.0    0.0
+ CAF:lvl47_rAmA              ExmplUsrModel           292           0    0.0    0.0     0.0    0.0
+  usrAmiInit                 ExmplUsrModel           356           0    0.0    0.0     0.0    0.0
+ CAF:lvl45_rAmy              ExmplUsrModel           291           0    0.0    0.0     0.0    0.0
+  usrAmiInit                 ExmplUsrModel           355           0    0.0    0.0     0.0    0.0
+ CAF:lvl43_rAmw              ExmplUsrModel           290           0    0.0    0.0     0.0    0.0
+  usrAmiInit                 ExmplUsrModel           354           0    0.0    0.0     0.0    0.0
+ CAF:lvl41_rAmu              ExmplUsrModel           289           0    0.0    0.0     0.0    0.0
+  usrAmiInit                 ExmplUsrModel           352           0    0.0    0.0     0.0    0.0
+ CAF:theCtle_rAms            ExmplUsrModel           288           0    0.0    0.0     0.0    0.0
+  usrAmiInit                 ExmplUsrModel           401           0    0.0    0.0     0.0    0.0
+   usrAmiInit.theCtle        ExmplUsrModel           402           1    0.0    0.0     0.0    0.0
+ CAF:taps_rAmq               ExmplUsrModel           287           0    0.0    0.0     0.0    0.0
+  usrAmiInit                 ExmplUsrModel           399           0    0.0    0.0     0.0    0.0
+   usrAmiInit.taps           ExmplUsrModel           400           1    0.0    0.0     0.0    0.0
+ CAF:lvl30_rAmg              ExmplUsrModel           282           0    0.0    0.0     0.0    0.0
+  usrAmiInit                 ExmplUsrModel           348           0    0.0    0.0     0.0    0.0
+ CAF:lvl29_rAmf              ExmplUsrModel           281           0    0.0    0.0     0.0    0.0
+ CAF:stage0_fract_rr52       ExmplUsrModel           279           0    0.0    0.0     0.0    0.0
+  stage0_fract               ExmplUsrModel           381           1    0.0    0.0     0.0    0.0
+ CAF:lvl23_rAhs              ExmplUsrModel           278           0    0.0    0.0     0.0    0.0
+  stage0_fract               ExmplUsrModel           388           0    0.0    0.0     0.0    0.0
+ CAF:lvl22_rAhr              ExmplUsrModel           277           0    0.0    0.0     0.0    0.0
+  stage0_fract               ExmplUsrModel           386           0    0.0    0.0     0.0    0.0
+ CAF:lvl21_rAhq              ExmplUsrModel           276           0    0.0    0.0     0.0    0.0
+  stage0_fract               ExmplUsrModel           384           0    0.0    0.0     0.0    0.0
+ CAF:lvl20_rAhp              ExmplUsrModel           275           0    0.0    0.0     0.0    0.0
+  stage0_fract               ExmplUsrModel           382           0    0.0    0.0     0.0    0.0
+ CAF:stage0_poles_rr51       ExmplUsrModel           274           0    0.0    0.0     0.0    0.0
+  stage0_poles               ExmplUsrModel           392           1    0.0    0.0     0.0    0.0
+ CAF:lvl16_rAcG              ExmplUsrModel           273           0    0.0    0.0     0.0    0.0
+  stage0_poles               ExmplUsrModel           396           0    0.0    0.0     0.0    0.0
+ CAF:lvl15_rAcF              ExmplUsrModel           272           0    0.0    0.0     0.0    0.0
+  stage0_poles               ExmplUsrModel           395           0    0.0    0.0     0.0    0.0
+ CAF:lvl14_rAcE              ExmplUsrModel           271           0    0.0    0.0     0.0    0.0
+  stage0_poles               ExmplUsrModel           394           0    0.0    0.0     0.0    0.0
+ CAF:lvl13_rAcD              ExmplUsrModel           270           0    0.0    0.0     0.0    0.0
+  stage0_poles               ExmplUsrModel           393           0    0.0    0.0     0.0    0.0
+ CAF:numProc_rr4O            ExmplUsrModel           263           0    0.0    0.0     0.0    0.0
+  numProc                    ExmplUsrModel           383           1    0.0    0.0     0.0    0.0
+ CAF:numBW_rr4P              ExmplUsrModel           262           0    0.0    0.0     0.0    0.0
+  numBW                      ExmplUsrModel           385           1    0.0    0.0     0.0    0.0
+ CAF:numDC_rr4Q              ExmplUsrModel           261           0    0.0    0.0     0.0    0.0
+  numDC                      ExmplUsrModel           387           1    0.0    0.0     0.0    0.0
+ CAF:numMode_rr4R            ExmplUsrModel           260           0    0.0    0.0     0.0    0.0
+  numMode                    ExmplUsrModel           389           1    0.0    0.0     0.0    0.0
+ CAF:myRootName_rr4S         ExmplUsrModel           259           0    0.0    0.0     0.0    0.0
+  myRootName                 ExmplUsrModel           351           1    0.0    0.0     0.0    0.0
+ CAF:a10_r7KF                AMIParse                257           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                331           0    0.0    0.0     0.0    0.0
+   symbol                    AMIParse                332           1    0.0    0.0     0.0    0.0
+ CAF:amiToken1               AMIParse                256           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                315           1    0.0    0.0     0.0    0.0
+ CAF:amiToken29              AMIParse                255           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                320           0    0.0    0.0     0.0    0.0
+   symbol                    AMIParse                321           1    0.0    0.0     0.0    0.0
+ CAF:amiToken30              AMIParse                254           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                323           0    0.0    0.0     0.0    0.0
+ CAF:amiToken5               AMIParse                253           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                325           0    0.0    0.0     0.0    0.0
+   symbol                    AMIParse                326           1    0.0    0.0     0.0    0.0
+ CAF:a8_r7KD                 AMIParse                251           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                345           0    0.0    0.0     0.0    0.0
+   symbol                    AMIParse                346           1    0.0    0.0     0.0    0.0
+ CAF:lvl12_r7KC              AMIParse                250           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                347           0    0.0    0.0     0.0    0.0
+ CAF:lvl11_r7Ky              AMIParse                249           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                338           0    0.0    0.0     0.0    0.0
+ CAF:lvl10_r7Kx              AMIParse                248           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                339           0    0.0    0.0     0.0    0.0
+ CAF:a4_r7Kw                 AMIParse                247           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                342           0    0.0    0.0     0.0    0.0
+   symbol                    AMIParse                343           1    0.0    0.0     0.0    0.0
+ CAF:lvl9_r7Kv               AMIParse                246           0    0.0    0.0     0.0    0.0
+  amiToken                   AMIParse                344           0    0.0    0.0     0.0    0.0
+ CAF:a3_r7Kt                 AMIParse                245           0    0.0    0.0     0.0    0.0
+  quotedVal                  AMIParse                335           1    0.0    0.0     0.0    0.0
+ CAF:lvl3_r7Km               AMIParse                243           0    0.0    0.0     0.0    0.0
+  quotedVal                  AMIParse                337           0    0.0    0.0     0.0    0.0
+ CAF:amiToken17              AMIParse                242           0    0.0    0.0     0.0    0.0
+  skipJunk                   AMIParse                317           1    0.0    0.0     0.0    0.0
+ CAF:amiToken26              AMIParse                241           0    0.0    0.0     0.0    0.0
+  skipJunk                   AMIParse                319           0    0.0    0.0     0.0    0.0
+ CAF:amiToken8               AMIParse                239           0    0.0    0.0     0.0    0.0
+  identifier                 AMIParse                327           1    0.0    0.0     0.0    0.0
+ CAF:amiToken10              AMIParse                238           0    0.0    0.0     0.0    0.0
+  identifier                 AMIParse                329           0    0.0    0.0     0.0    0.0
+ CAF:amiGetInt3              AMIParse                237           0    0.0    0.0     0.0    0.0
+  amiGetInt                  AMIParse                363           0    0.0    0.0     0.0    0.0
+ CAF:$fShowAmiExp_$cshow     AMIParse                234           0    0.0    0.0     0.0    0.0
+  show                       AMIParse                357           1    0.0    0.0     0.0    0.0
+ CAF:lvl1_r7Kk               AMIParse                233           0    0.0    0.0     0.0    0.0
+  showTree                   AMIParse                361           0    0.0    0.0     0.0    0.0
+   showToken                 AMIParse                362           0    0.0    0.0     0.0    0.0
+ CAF                         System.Random           227           0    0.0    0.0     0.0    0.0
+ CAF                         GHC.IO.Encoding         196           0    0.0    0.0     0.0    0.0
+ CAF                         GHC.IO.Handle.FD        194           0    0.0    0.0     0.0    0.0
+ CAF                         System.CPUTime          187           0    0.0    0.0     0.0    0.0
+ CAF                         Text.Read.Lex           185           0    0.0    0.0     0.0    0.0
+ CAF                         GHC.Conc.Signal         183           0    0.0    0.0     0.0    0.0
+ CAF                         GHC.IO.Encoding.Iconv   181           0    0.0    0.0     0.0    0.0

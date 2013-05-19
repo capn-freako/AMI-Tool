@@ -67,7 +67,7 @@ amiGetWave wave_in wave_size clock_times ami_parameters_out ami_memory_ptr
         -- model specific filtering
         self       <- deRefStablePtr ami_memory_ptr -- The accessor, `amiParams' below, takes the structure itself,
         amiParams  <- deRefStablePtr $ amiParams self -- not a pointer to it.
-        y          <- usrAmiGetWave ami_memory_ptr amiParams (map realToFrac theWave)
+        y          <- usrAmiGetWave ami_memory_ptr (map realToFrac theWave)
         pokeArray wave_in (map realToFrac y)
 
         return 1
